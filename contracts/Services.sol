@@ -1,6 +1,8 @@
 pragma solidity ^0.4.24;
 pragma experimental ABIEncoderV2;
 
+import "./SafeMath.sol";
+
 // last implemented contract: 0x70ae5b30c81d00cc4b6cbe765a71ab89e35d2cc4
 contract GeneralService {
     using SafeMath for uint;
@@ -12,7 +14,7 @@ contract GeneralService {
     }
     
     // address public modelAddr = 0xe2d50CFb680ffD3E39a187ae8C22B4f81b092A10;
-    string public companyName = "XiHongShi Insurance";
+    string public companyName;
     address public moderator;
     Service[] public services;
     uint256[] public inputData;
@@ -30,10 +32,6 @@ contract GeneralService {
     
     constructor() public {
         moderator = msg.sender;
-        // test only
-        services.push(Service("1", 5, 1, 10));
-        services.push(Service("2", 7, 2, 20));
-        services.push(Service("3", 15, 3, 30));
     }
     
     function updateCompanyName(string _newName) public moderatorOnly {
@@ -154,68 +152,10 @@ contract GeneralService {
 contract InsuranceService is GeneralService {
     
     constructor() public {
-        
+        companyName = "XiHongShi Insurance";
+        services.push(Service("1", 5, 1, 10));
+        services.push(Service("2", 7, 2, 20));
+        services.push(Service("3", 15, 3, 30));
     }
     
-}
-
-
-library SafeMath {
-
-  /**
-  * @dev Multiplies two numbers, reverts on overflow.
-  */
-  function mul(uint256 a, uint256 b) internal pure returns (uint256) {
-    // Gas optimization: this is cheaper than requiring 'a' not being zero, but the
-    // benefit is lost if 'b' is also tested.
-    // See: https://github.com/OpenZeppelin/openzeppelin-solidity/pull/522
-    if (a == 0) {
-      return 0;
-    }
-
-    uint256 c = a * b;
-    require(c / a == b);
-
-    return c;
-  }
-
-  /**
-  * @dev Integer division of two numbers truncating the quotient, reverts on division by zero.
-  */
-  function div(uint256 a, uint256 b) internal pure returns (uint256) {
-    require(b > 0); // Solidity only automatically asserts when dividing by 0
-    uint256 c = a / b;
-    // assert(a == b * c + a % b); // There is no case in which this doesn't hold
-
-    return c;
-  }
-
-  /**
-  * @dev Subtracts two numbers, reverts on overflow (i.e. if subtrahend is greater than minuend).
-  */
-  function sub(uint256 a, uint256 b) internal pure returns (uint256) {
-    require(b <= a);
-    uint256 c = a - b;
-
-    return c;
-  }
-
-  /**
-  * @dev Adds two numbers, reverts on overflow.
-  */
-  function add(uint256 a, uint256 b) internal pure returns (uint256) {
-    uint256 c = a + b;
-    require(c >= a);
-
-    return c;
-  }
-
-  /**
-  * @dev Divides two numbers and returns the remainder (unsigned integer modulo),
-  * reverts when dividing by zero.
-  */
-  function mod(uint256 a, uint256 b) internal pure returns (uint256) {
-    require(b != 0);
-    return a % b;
-  }
 }
