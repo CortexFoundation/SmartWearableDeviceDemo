@@ -75,7 +75,7 @@ contract dataController is Ownable {
 
 		/**
 		 * User Data Register API
-		 * 
+		 *
 		 * According to the privacy of users' requirements, we only accept the
 		 *	data of users who have the consistent face features extracted from
 		 *	local AI model in the credible and secure wearable device.
@@ -93,8 +93,6 @@ contract dataController is Ownable {
 		 *	need to re-register the public address with validating the user 
 		 *	pre-set name.
 		 **/
-
-		function registerUser
 
     // register for self
     function registerUser(string calldata name) public onlyOwner {
