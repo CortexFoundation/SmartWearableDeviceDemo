@@ -86,6 +86,16 @@ contract dataController is Ownable {
     }
 
     //user cacel the permission of all the category data access
+		/**
+		 * TODO(ljj): Add the logic for auto deauthorized, since you can
+		 *	get the block number. The `authorize` method gives an accessible
+		 *	permission for a period of time counted via block number.
+		 *
+		 *	It's strange to request the user to deauthorize the permission
+		 *	manually.
+		 * 
+		 *	blkNumber = block.number
+		 **/
     function personDeauthorize(address _iAddress) public existOnly {
         deauthorize(_iAddress,0); // 000 cacel all the data
     }
