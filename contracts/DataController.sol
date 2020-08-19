@@ -5,28 +5,30 @@ import "./SafeMath.sol";
 
 contract dataController is Ownable {
     using SafeMath for uint256;
-    //-------data storage structure
-    //the heath information collect by wristband
+
+// -------------------------- Pre-defined Structure ----------------------------
+
+    // the heath information collect by wristband
     struct data {
         uint256 dataTimestamp;
-        int8[28*28] Tdata; //low level feature data
+        int8[28*28] Tdata; // low level feature data
     }
-    //the data access log of information
+    // the data access log of information
     struct log {
         // string category;
         uint256 logTimestamp;
         string institutionName;
-        uint8 cate; //what data has been visited,eg. 111, all 
+        uint8 cate; // what data has been visited,eg. 111, all 
     }
 
     struct person {
-        bool exist;   //indicate that if has been register
+        bool exist;   // indicate that if has been register
         string name;
         data[] datas;
         log[] hospitalLogs;
         log[] insuranceLogs;
-        //TODO: or use eg. 00001
-        mapping(address => mapping(string => license)) permission; //the second string represent the dataCategorory
+        // TODO: or use eg. 00001
+        mapping(address => mapping(string => license)) permission; // the second string represent the dataCategorory
     }
 
     struct license {
@@ -41,15 +43,18 @@ contract dataController is Ownable {
         string name;
         string category;
     }
-    
-    //categorty of institution
+
+
+// ----------------------------- Private Members -------------------------------
+
+    // categorty of institution
     mapping (uint8 => string) numToCategory;
     uint256 INT_MAX = 2**256 - 1;
 
-    uint8 NUMCATE = 3;  //number of institution category
-    uint period = 5; //block number to time of permission
+    uint8 NUMCATE = 3;  // number of institution category
+    uint period = 5; // block number to time of permission
     string [NUMCATE] dataCategory = ["data","hospitalLog", "insuranceLog"];
-    //every insurance contract has its own address;
+    // every insurance contract has its own address;
     mapping (string => address) insuranceAddress;
     mapping (address => person) personInfo;
     mapping (address => institution) institutionInfo;
@@ -70,19 +75,52 @@ contract dataController is Ownable {
 
     constructor() public {
         numToCategory[1] = "data";  // 001--data allow
-        numToCategory[2] = "hospitalLog";   //010--hospital record allow
-        numToCategory[4] = "insuranceLog"; //100--insurance company record allow
+        numToCategory[2] = "hospitalLog";   // 010--hospital record allow
+        numToCategory[4] = "insuranceLog"; // 100--insurance company record allow
 
     }
 
-    //-------interface for people
-    //register for self
-    function registerPerson(string calldata name) public {
+
+// ------------------------- Contract Authorization ----------------------------
+
+		/**
+		 * Contract Authorization API (TODO)
+		 *
+		 * We need some extended permission management mechanism, such as
+		 *	the `registerUser` permission may authorize another organization.
+		 **/
+	
+
+// ----------------------------- User Interface --------------------------------
+
+		/**
+		 * User Data Register API
+		 *
+		 * According to the privacy of users' requirements, we only accept the
+		 *	data of users who have the consistent face features extracted from
+		 *	local AI model in the credible and secure wearable device.
+		 *
+		 * In fact, the user devices may connect the blockchain via a optional
+		 *	intermediate layer, that is our server stack, which never stores
+		 *	the user privacy data and will use the blockchain as the backend
+		 *	database. The server plays a part for authorization mainly:
+		 *
+		 *	- Data forwarding between the users' wearable devices and blockchain.
+		 *	- User validating for the correct face features and identifier address.
+		 *
+		 * The server register uses the indentifier as the storage map key. User
+		 *	would change the address after some time for privacy protection and
+		 *	need to re-register the public address with validating the user 
+		 *	pre-set name.
+		 **/
+
+    // register for self
+    function registerUser(string calldata name) public onlyOwner {
         person storage p = personInfo[msg.sender];
         p.exist = true;
         p.name = name;
     }
-    //upload the data collect
+    // upload the data collect
     function uploadData(string calldata cData) public existOnly {
         data storage tData;
         tData.Tdata = cData;
@@ -90,7 +128,20 @@ contract dataController is Ownable {
         personInfo[msg.sender].datas.push(tData);
     }
 
-    //grant acess to institution & change permission
+		/**
+		 * Authorization API
+		 *
+		 * We design the autorization with a period of time, instead of
+		 *	the number of calls. And the personal body features will
+		 *	be registered with different address and the same name.
+		 * 
+		 *	It's strange to request the user to deauthorize the permission
+		 *	manually.
+		 * 
+		 *	blkNumber = block.number
+		 **/
+
+    // grant acess to institution & change permission
     function authorize(address _iAddress,uint8 au,uint start,uint end) public existOnly {
         for (uint i = 0; i < NUMCATE; i.add(1)) {
             if((au>>i) & 1) {
@@ -111,8 +162,8 @@ contract dataController is Ownable {
     function cacelData() public existOnly {
         delete personInfo[msg.sender];
     }
+// --------------------------- Service Interface -------------------------------
 
-    //--------interface for insurance
 
     function registerInstitution(string calldata name, string calldata category) public {
         institution storage i = institutionInfo[msg.sender];
@@ -133,8 +184,8 @@ contract dataController is Ownable {
             revert("wrong dataCategory");
         }
     }
-    //get the health data
-    //if access success,first return index(>0),or return 0
+    // get the health data
+    // if access success,first return index(>0),or return 0
     function accessData(uint8 dataCategory,string calldata name,
                         string category, address people,uint index) public view withPermit(people,dataCategory)returns(uint, uint8[28*28]){
         require(personInfo[people].exist == true, "people don't exist");
@@ -149,8 +200,8 @@ contract dataController is Ownable {
         }
     }
 
-    //get the log
-    //if access success,first return index(>0),or return 0
+    // get the log
+    // if access success,first return index(>0),or return 0
     function accessLog(uint8 category, string calldata name, address people) public view withPermit(people,category) returns(uint8,string,uint8){
         require(personInfo[people].exist == true, "don't exist");
         dataLog(dataCategory,category,name,people);
@@ -177,7 +228,7 @@ contract dataController is Ownable {
         }
     }
 
-    //every insurance service has its own contract address
+    // every insurance service has its own contract address
     function setInsuranceInstance(string calldata name, address _address) public onlyOwner {
         insuranceAddress[name] = _address;
     }
@@ -187,8 +238,14 @@ contract dataController is Ownable {
         return institutionInfo[_address].name;
     }
 
-    //-------basic function
-    //cancel the permission of data access for institution
+
+
+// ---------------------------- Helper Functions -------------------------------
+
+
+    // function pur;
+
+    // cancel the permission of data access for institution
     function deauthorize(address _iAddress, uint8 au) internal {
         for (uint i = 0; i < NUMCATE; i.add(1)) {
             if(((au>>i) & 1) == 0) {
@@ -198,7 +255,7 @@ contract dataController is Ownable {
             }
         }
     }
-    //record who has access the person's data
+    // record who has access the person's data
     function dataLog(uint8 dataCategory,string calldata category,string calldata name, address people) internal {
         require(personInfo[people].exist == true, "don't exist");
         log storage tlog;
@@ -222,7 +279,5 @@ contract dataController is Ownable {
     }
 
     //TODO : the timestamp problem 
-    // function logArrange(uint8 dataCategory) internal {
+    // function logArrange(uint8 dataCategory) internal
 
-    // }
-}

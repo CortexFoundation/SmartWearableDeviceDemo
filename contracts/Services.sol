@@ -1,12 +1,14 @@
-pragma solidity ^0.4.18;
-// pragma experimental ABIEncoderV2;
+pragma solidity ^0.4.24;
+pragma experimental ABIEncoderV2;
 
+// last implemented contract: 0x70ae5b30c81d00cc4b6cbe765a71ab89e35d2cc4
 contract GeneralService {
-    
+    using SafeMath for uint;
     struct Service{
         string name;
         uint256 riskThreshold;
         uint256 fee;
+        uint256 payment;
     }
     
     // address public modelAddr = 0xe2d50CFb680ffD3E39a187ae8C22B4f81b092A10;
@@ -19,7 +21,7 @@ contract GeneralService {
     uint8 public RISK_LEVEL_COUNT = 3;
     
     mapping(address => uint256) public availableServicesByUser;
-    mapping(address => uint256) public activeServices;
+    mapping(address => uint256) public activeServicesByUser;
     
     modifier moderatorOnly() {
         require(msg.sender == moderator, "Moderator Only");
@@ -29,9 +31,9 @@ contract GeneralService {
     constructor() public {
         moderator = msg.sender;
         // test only
-        services.push(Service("1", 5, 1));
-        services.push(Service("2", 7, 2));
-        services.push(Service("3", 15, 3));
+        services.push(Service("1", 5, 1, 10));
+        services.push(Service("2", 7, 2, 20));
+        services.push(Service("3", 15, 3, 30));
     }
     
     function updateCompanyName(string _newName) public moderatorOnly {
@@ -39,8 +41,8 @@ contract GeneralService {
     }
     
     // --- moderator functions --- 
-    function addService(string _name, uint256 _riskThreshold) public moderatorOnly {
-        services.push(Service(_name, _riskThreshold, 0));
+    function addService(string _name, uint256 _riskThreshold, uint256 _fee, uint256 _payment) public moderatorOnly {
+        services.push(Service(_name, _riskThreshold, _fee, _payment));
     }
     
     function updateService(uint256 _index, string _newName, uint256 _riskThreshold) public moderatorOnly {
@@ -48,12 +50,32 @@ contract GeneralService {
         services[_index].riskThreshold = _riskThreshold;
     }
     
+    // TODO: check user's current health condition first,
+    // require TRUE for payment
+    function payment(address _userAddr, uint8 _serviceIndex) public moderatorOnly {
+        if(isServiceActive(_userAddr, _serviceIndex)){
+            _userAddr.transfer(services[_serviceIndex].payment);
+        }
+    }
+    
     // --- getters --- 
     function getNumberOfServices() public view returns(uint256) {
         return services.length;
     }
     
-    function isServiceActive(address _userAddr, uint256 _serviceIndex) public view returns(bool){
+    function getService(uint8 _serviceIndex) public view returns(Service) {
+        return services[_serviceIndex];
+    }
+    
+    function getAvaialbleServicesByUser(address _userAddr) public view returns(uint256){
+        return availableServicesByUser[_userAddr];
+    }
+    
+    function getActiveServicesByUser(address _userAddr) public view returns(uint256){
+        return activeServicesByUser[_userAddr];
+    }
+    
+    function isServiceActive(address _userAddr, uint8 _serviceIndex) public view returns(bool){
         if((availableServicesByUser[_userAddr] >> _serviceIndex & 1) == 1){
             return true;
         }
@@ -64,7 +86,8 @@ contract GeneralService {
     // use compressed integer for requesting caterories
     // e.g., 0101 => cat 3 & 1
     function requestAuthorisation(address _clientAddr, uint256 _categories) public {
-        
+        _clientAddr = address(0);
+        services[_categories] = Service("123", 2,2,4);
     }
     
     function getAvaialbleServices(address _userAddr, address _modelHash) public returns(uint256){
@@ -97,7 +120,7 @@ contract GeneralService {
     
     function getUserData(uint _dataCategory) internal {
         // FIXME: get user data from data contract
-        inputData = new uint256[](1);
+        inputData = new uint256[](_dataCategory);
     }
     
     
@@ -112,6 +135,87 @@ contract GeneralService {
             // refund excess payment
             msg.sender.transfer(services[_serviceIndex].fee - msg.value);
         }
-        activeServices[msg.sender] = activeServices[msg.sender] | (1 << _serviceIndex);
+        activeServicesByUser[msg.sender] = activeServicesByUser[msg.sender] | (1 << _serviceIndex);
     }
+    
+    // get data from data contract
+    // true 
+    function checkCurrentHealthCondition(address _userAddr) public pure returns(bool){
+        if(_userAddr == address(0)){
+            return true;
+        }
+        else{
+            return false;
+        }
+    }
+}
+
+// for future implementations
+contract InsuranceService is GeneralService {
+    
+    constructor() public {
+        
+    }
+    
+}
+
+
+library SafeMath {
+
+  /**
+  * @dev Multiplies two numbers, reverts on overflow.
+  */
+  function mul(uint256 a, uint256 b) internal pure returns (uint256) {
+    // Gas optimization: this is cheaper than requiring 'a' not being zero, but the
+    // benefit is lost if 'b' is also tested.
+    // See: https://github.com/OpenZeppelin/openzeppelin-solidity/pull/522
+    if (a == 0) {
+      return 0;
+    }
+
+    uint256 c = a * b;
+    require(c / a == b);
+
+    return c;
+  }
+
+  /**
+  * @dev Integer division of two numbers truncating the quotient, reverts on division by zero.
+  */
+  function div(uint256 a, uint256 b) internal pure returns (uint256) {
+    require(b > 0); // Solidity only automatically asserts when dividing by 0
+    uint256 c = a / b;
+    // assert(a == b * c + a % b); // There is no case in which this doesn't hold
+
+    return c;
+  }
+
+  /**
+  * @dev Subtracts two numbers, reverts on overflow (i.e. if subtrahend is greater than minuend).
+  */
+  function sub(uint256 a, uint256 b) internal pure returns (uint256) {
+    require(b <= a);
+    uint256 c = a - b;
+
+    return c;
+  }
+
+  /**
+  * @dev Adds two numbers, reverts on overflow.
+  */
+  function add(uint256 a, uint256 b) internal pure returns (uint256) {
+    uint256 c = a + b;
+    require(c >= a);
+
+    return c;
+  }
+
+  /**
+  * @dev Divides two numbers and returns the remainder (unsigned integer modulo),
+  * reverts when dividing by zero.
+  */
+  function mod(uint256 a, uint256 b) internal pure returns (uint256) {
+    require(b != 0);
+    return a % b;
+  }
 }
