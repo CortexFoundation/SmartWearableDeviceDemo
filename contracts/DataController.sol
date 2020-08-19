@@ -4,6 +4,9 @@ import "./Ownable.sol";
 import "./SafeMath.sol";
 
 contract dataController is Ownable {
+
+// -------------------------- Pre-defined Structure ----------------------------
+
     using SafeMath for uint8;
     //-------data storage structure
     //the heath information collect by wristband
@@ -32,6 +35,9 @@ contract dataController is Ownable {
         bool exist;
         string name;
     }
+
+// ----------------------------- Private Members -------------------------------
+
     //categorty of institution
     mapping (uint8 => string) numToCategory;
     uint8 NUMCATE = 3;  //number of institution category
@@ -140,7 +146,7 @@ contract dataController is Ownable {
         deauthorize(_iAddress,0); // 000 cacel all the data
     }
 
-    //--------interface for insurance
+// --------------------------- Service Interface -------------------------------
 
     function accessData(string calldata dataCategory,string calldata name,
         string category, address people) pubic withPermit(people,dataCategory)returns(uint,log){
@@ -178,6 +184,7 @@ contract dataController is Ownable {
     }
 
 
+// ---------------------------- Helper Functions -------------------------------
 
 
     // function pur;
