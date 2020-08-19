@@ -1,15 +1,15 @@
-pragma solidity ^0.7.0;
+pragma solidity ^0.4.18;
 
 import "./Ownable.sol";
 import "./SafeMath.sol";
 
 contract dataController is Ownable {
-    using SafeMath for uint8;
+    using SafeMath for uint256;
     //-------data storage structure
     //the heath information collect by wristband
     struct data {
         uint256 dataTimestamp;
-        string Tdata;
+        int8[28*28] Tdata; //low level feature data
     }
     //the data access log of information
     struct log {
@@ -26,15 +26,28 @@ contract dataController is Ownable {
         log[] hospitalLogs;
         log[] insuranceLogs;
         //TODO: or use eg. 00001
-        mapping(address => mapping(string => bool)) permission; //use num to indicate category of permission
+        mapping(address => mapping(string => license)) permission; //the second string represent the dataCategorory
     }
+
+    struct license {
+        uint existTime;
+        // the permission of the duration data 
+        uint start;
+        uint end;
+    }
+
     struct institution {
         bool exist;
         string name;
+        string category;
     }
+    
     //categorty of institution
     mapping (uint8 => string) numToCategory;
+    uint256 INT_MAX = 2**256 - 1;
+
     uint8 NUMCATE = 3;  //number of institution category
+    uint period = 5; //block number to time of permission
     string [NUMCATE] dataCategory = ["data","hospitalLog", "insuranceLog"];
     //every insurance contract has its own address;
     mapping (string => address) insuranceAddress;
@@ -48,9 +61,10 @@ contract dataController is Ownable {
         "not register yet!");
         _;
     }
-    modifier withPermit(address _address,string category) {
-        require(personInfo[_address].permission[msg.sender][category] == true,
-        "not allowed to access the data");
+    modifier withPermit(address _address,uint8 category) {
+        string memory c = numToCategory[category];
+        license storage tlicense = personInfo[_address].permission[msg.sender][c]; 
+        require(tlicense.existTime.add(5) < block.number, "not allowed to access the data");
         _;
     }
 
@@ -58,6 +72,7 @@ contract dataController is Ownable {
         numToCategory[1] = "data";  // 001--data allow
         numToCategory[2] = "hospitalLog";   //010--hospital record allow
         numToCategory[4] = "insuranceLog"; //100--insurance company record allow
+
     }
 
     //-------interface for people
@@ -76,11 +91,14 @@ contract dataController is Ownable {
     }
 
     //grant acess to institution & change permission
-    function authorize(address _iAddress,uint8 au) public existOnly {
+    function authorize(address _iAddress,uint8 au,uint start,uint end) public existOnly {
         for (uint i = 0; i < NUMCATE; i.add(1)) {
             if((au>>i) & 1) {
                 string category = numToCategory[1 << i];
-                personInfo[msg.sender].permission[_iAddress][category] = true;
+                license storage tlicense = personInfo[msg.sender].permission[_iAddress][category];
+                tlicense.existTime = block.number;
+                tlicense.start = start;
+                tlicense.end = end;
             }
         }
     }
@@ -90,21 +108,73 @@ contract dataController is Ownable {
         deauthorize(_iAddress,0); // 000 cacel all the data
     }
 
-    //--------interface for insurance
-
-    function accessData(string calldata dataCategory,string calldata name,
-        string category, address people) pubic withPermit(people,dataCategory)returns(uint,log){
-        require(personInfo[people].exist == true, "people don't exist");
-        person storage p = personInfo[people];
-        return (index,data)
-        dataLog()
+    function cacelData() public existOnly {
+        delete personInfo[msg.sender];
     }
 
-    function accessData(string calldata category, string calldata name, address people) internal view withPermit(people,category) returns(person meomory){
+    //--------interface for insurance
+
+    function registerInstitution(string calldata name, string calldata category) public {
+        institution storage i = institutionInfo[msg.sender];
+        i.exist = true;
+        i.name = name;
+        i.categorty = category;
+    }
+
+    //get the number of data struct
+    function getDataNum(string calldata dataCategory,address people) public view withPermit(people,dataCategory) returns(uint){
+        if(keccak256(abi.encodePacked(dataCategory)) == keccak256(abi.encodePacked("data"))) {
+            return personInfo[people].datas.length;
+        } else if(keccak256(abi.encodePacked(dataCategory)) == keccak256(abi.encodePacked("hospitalLog"))) {
+            return personInfo[people].hospitalLogs.length;
+        } else if(keccak256(abi.encodePacked(dataCategory)) == keccak256(abi.encodePacked("insuranceLog"))) {
+            return personInfo[people].insuranceLog.length;
+        } else {
+            revert("wrong dataCategory");
+        }
+    }
+    //get the health data
+    //if access success,first return index(>0),or return 0
+    function accessData(uint8 dataCategory,string calldata name,
+                        string category, address people,uint index) public view withPermit(people,dataCategory)returns(uint, uint8[28*28]){
+        require(personInfo[people].exist == true, "people don't exist");
+        dataLog(dataCategory,category,name,people);
+        data tdata = personInfo[people].datas[index];
+        string memory c = numToCategory[category];
+        license storage tlicense = personInfo[people].permission[msg.sender][c];
+        if(timeFilter(tdata.dataTimestamp,tlicense.start,tlicense.end)) {
+            return (index,tdata.Tdata);
+        } else {
+            return (0,tdata.Tdata);
+        }
+    }
+
+    //get the log
+    //if access success,first return index(>0),or return 0
+    function accessLog(uint8 category, string calldata name, address people) public view withPermit(people,category) returns(uint8,string,uint8){
         require(personInfo[people].exist == true, "don't exist");
-        accessDataLog(category,name,people);
-        emit accessSuccess(msg.sender);
-        return personInfo[people];
+        dataLog(dataCategory,category,name,people);
+        if(category == 2) {
+            log tlog = personInfo[people].hospitalLogs[index];
+            string memory c = numToCategory[category];
+            license storage tlicense = personInfo[people].permission[msg.sender][c];
+            if(timeFilter(tdata.dataTimestamp,tlicense.start,tlicense.end)) {
+                return (index, tlog.institutionName, tlog.cate);
+            } else {
+                return (0, tlog.institutionName, tlog.cate);
+            }
+        } else if(category == 4) {
+            log tlog = personInfo[people].insuranceLogs[index];
+            string memory c = numToCategory[category];
+            license storage tlicense = personInfo[people].permission[msg.sender][c];
+            if(timeFilter(tdata.dataTimestamp,tlicense.start,tlicense.end)) {
+                return (index, tlog.institutionName, tlog.cate);
+            } else {
+                return (0, tlog.institutionName, tlog.cate);
+            }
+        } else {
+            revert("wrong dataCategory");
+        }
     }
 
     //every insurance service has its own contract address
@@ -112,25 +182,10 @@ contract dataController is Ownable {
         insuranceAddress[name] = _address;
     }
 
-    function cacelData() public existOnly {
-        delete personInfo[msg.sender];
-    }
-
-    function registerInstitution(string calldata name) public {
-        institution storage i = institutionInfo[msg.sender];
-        i.exist = true;
-        i.name = name;
-    }
-
     function getInstitutionName(address _address) public view returns(string memory){
         require(institutionInfo[_address].exist == true, "this institution not exist");
         return institutionInfo[_address].name;
     }
-
-
-
-
-    // function pur;
 
     //-------basic function
     //cancel the permission of data access for institution
@@ -138,7 +193,8 @@ contract dataController is Ownable {
         for (uint i = 0; i < NUMCATE; i.add(1)) {
             if(((au>>i) & 1) == 0) {
                 string category = numToCategory[1 << i];
-                personInfo[msg.sender].permission[_iAddress][category] = false;
+                license storage tlicense = personInfo[msg.sender].permission[_iAddress][category];
+                tlicense.existTime = INT_MAX;
             }
         }
     }
@@ -156,9 +212,17 @@ contract dataController is Ownable {
             personInfo[people].insuranceLogs.push(tlog);
         }
     }
-    //TODO : the timestamp problem 
-    function logArrange(uint8 dataCategory) internal {
-
+    
+    function timeFilter(uint ttime,uint start,uint end) internal view returns(bool) {
+         if(ttime < start || ttime > end) {
+             return false;
+         } else {
+             return true;
+         }
     }
-    function timeFilter()
+
+    //TODO : the timestamp problem 
+    // function logArrange(uint8 dataCategory) internal {
+
+    // }
 }
