@@ -1,23 +1,14 @@
 pragma solidity ^0.4.24;
-pragma experimental ABIEncoderV2;
+// pragma experimental ABIEncoderV2;
 
 import "./SafeMath.sol";
 
 // last implemented contract: 0x70ae5b30c81d00cc4b6cbe765a71ab89e35d2cc4
 contract GeneralService {
     using SafeMath for uint;
-    struct Service{
-        string name;
-        uint256 riskThreshold;
-        uint256 fee;
-        uint256 payment;
-    }
     
     // address public modelAddr = 0xe2d50CFb680ffD3E39a187ae8C22B4f81b092A10;
     string public companyName;
-    address public moderator;
-    Service[] public services;
-    uint256[] public inputData;
     uint8 public USER_DATA_COUNT = 10;
     // 0: low risk, 1: medium risk, 2: high risk
     uint8 public RISK_LEVEL_COUNT = 3;
@@ -25,13 +16,62 @@ contract GeneralService {
     mapping(address => uint256) public availableServicesByUser;
     mapping(address => uint256) public activeServicesByUser;
     
-    modifier moderatorOnly() {
-        require(msg.sender == moderator, "Moderator Only");
-        _;
+    
+    // --- getters --- 
+    function getNumberOfServices() public view returns(uint256) ;
+    
+    function getService(uint8 _serviceIndex) public view returns(string, uint256, uint256);
+    
+    function getAvaialbleServicesByUser(address _userAddr) public view returns(uint256);
+    
+    function getActiveServicesByUser(address _userAddr) public view returns(uint256);
+    
+    function isServiceActive(address _userAddr, uint8 _serviceIndex) public view returns(bool);
+    
+    
+    // --- service AI inferences --- 
+    // use compressed integer for requesting caterories
+    // e.g., 0101 => cat 3 & 1
+    function requestAuthorisation(address _clientAddr, uint256 _categories) public;
+    
+    function getAvaialbleServices(address _userAddr, address _modelHash) public returns(uint256);
+    
+    function getUserData(uint _dataCategory) internal;
+    
+    
+    // --- purchase services --- 
+    function purchaseService(uint256 _serviceIndex) public payable;
+    
+    // get data from data contract
+    // used for insurance payment 
+    function checkCurrentHealthCondition(address _userAddr) public pure returns(bool);
+}
+
+// for future implementations
+contract InsuranceService is GeneralService {
+    
+    struct Service{
+        string name;
+        uint256 riskThreshold;
+        uint256 fee;
+        uint256 payment;
     }
+    
+    address public moderator;
+    Service[] services;
+    uint256[] public inputData;
     
     constructor() public {
         moderator = msg.sender;
+        companyName = "XiHongShi Insurance";
+        services.push(Service("1", 5, 1, 10));
+        services.push(Service("2", 7, 2, 20));
+        services.push(Service("3", 15, 3, 30));
+    }
+    
+    modifier moderatorOnly() {
+        require(msg.sender == moderator, "Moderator Only");
+        _;
     }
     
     function updateCompanyName(string _newName) public moderatorOnly {
@@ -61,8 +101,8 @@ contract GeneralService {
         return services.length;
     }
     
-    function getService(uint8 _serviceIndex) public view returns(Service) {
-        return services[_serviceIndex];
+    function getService(uint8 _serviceIndex) public view returns(string, uint256, uint256) {
+        return (services[_serviceIndex].name, services[_serviceIndex].fee, services[_serviceIndex].payment);
     }
     
     function getAvaialbleServicesByUser(address _userAddr) public view returns(uint256){
@@ -146,16 +186,4 @@ contract GeneralService {
             return false;
         }
     }
-}
-
-// for future implementations
-contract InsuranceService is GeneralService {
-    
-    constructor() public {
-        companyName = "XiHongShi Insurance";
-        services.push(Service("1", 5, 1, 10));
-        services.push(Service("2", 7, 2, 20));
-        services.push(Service("3", 15, 3, 30));
-    }
-    
 }
