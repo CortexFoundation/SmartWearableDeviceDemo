@@ -9,6 +9,7 @@ contract DataController is Ownable {
 // -------------------------- Pre-defined Structure ----------------------------
 
     // the heath information collect by wristband
+      
     struct Data {
         // when upload the data
         uint256 dataTimestamp;
@@ -103,36 +104,36 @@ contract DataController is Ownable {
         "is not allowed to accesss the data now!");
         _;
     }
-		/**
-		 * Contract Authorization API (TODO)
-		 *
-		 * We need some extended permission management mechanism, such as
-		 *	the `registerUser` permission may authorize another organization.
-		 **/
-	
+    /**
+     * Contract Authorization API (TODO)
+     *
+     * We need some extended permission management mechanism, such as
+     *  the `registerUser` permission may authorize another organization.
+     **/
+
 
 // ----------------------------- User Interface --------------------------------
 
-		/**
-		 * User Data Register API
-		 *
-		 * According to the privacy of users' requirements, we only accept the
-		 *	data of users who have the consistent face features extracted from
-		 *	local AI model in the credible and secure wearable device.
-		 *
-		 * In fact, the user devices may connect the blockchain via a optional
-		 *	intermediate layer, that is our server stack, which never stores
-		 *	the user privacy data and will use the blockchain as the backend
-		 *	database. The server plays a part for authorization mainly:
-		 *
-		 *	- Data forwarding between the users' wearable devices and blockchain.
-		 *	- User validating for the correct face features and identifier address.
-		 *
-		 * The server register uses the indentifier as the storage map key. User
-		 *	would change the address after some time for privacy protection and
-		 *	need to re-register the public address with validating the user 
-		 *	pre-set name.
-		 **/
+    /**
+     * User Data Register API
+     *
+     * According to the privacy of users' requirements, we only accept the
+     *  data of users who have the consistent face features extracted from
+     *  local AI model in the credible and secure wearable device.
+     *
+     * In fact, the user devices may connect the blockchain via a optional
+     *  intermediate layer, that is our server stack, which never stores
+     *  the user privacy data and will use the blockchain as the backend
+     *  database. The server plays a part for authorization mainly:
+     *  
+     *  - Data forwarding between the users' wearable devices and blockchain.
+     *  - User validating for the correct face features and identifier address.
+     *
+     * The server register uses the indentifier as the storage map key. User
+     *  would change the address after some time for privacy protection and
+     *  need to re-register the public address with validating the user 
+     *  pre-set name.
+     **/
 
     // Register through the server if you own a bracelet(collect the informaion)
     function registerUser(address _personId, string _name) public onlyOwner {
@@ -150,14 +151,14 @@ contract DataController is Ownable {
         personInfo[_personId].datas.push(tmpData);
     }
 
-		/**
-		 * Authorization API
-		 *
-		 * We design the autorization with a period of time, instead of
-		 *	the number of calls. And the personal body features will
-		 *	be registered with different address and the same name.
-		 * 
-		 **/
+    /**
+     * Authorization API
+     *
+     * We design the autorization with a period of time, instead of
+     *  the number of calls. And the personal body features will
+     *  be registered with different address and the same name.
+     * 
+     **/
 
     // grant acess to institution & change permission
     function authorize(
