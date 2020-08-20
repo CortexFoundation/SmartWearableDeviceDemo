@@ -15,10 +15,10 @@ contract dataController is Ownable {
     }
     // the data access log of information
     struct log {
-        string category;
-        uint256 logTimestamp;
-        string institutionName;
-        uint cate; // what data has been visited,eg. 111, all 
+        string category;    // the category of institution who access the information
+        uint256 logTimestamp;   // when access the data
+        string institutionName; // the name of the institution who access the information
+        uint cate; // what data has been visited,[001 -- data,010 -- hospitalLog, 100 -- insuranceLog] 
     }
 
     struct person {
@@ -52,7 +52,7 @@ contract dataController is Ownable {
     uint256 INT_MAX = 2**256 - 1;
     uint constant NUMCATE = 3;
     uint period = 5; // block number to time of permission
-    string [NUMCATE] dataCategory = ["data","hospitalLog", "insuranceLog"];
+    string [NUMCATE] dataCategories = ["data","hospitalLog", "insuranceLog"];
     // every insurance contract has its own address;
     mapping (string => address) insuranceAddress;
     mapping (address => person) personInfo;
@@ -188,10 +188,9 @@ contract dataController is Ownable {
     }
     // get the health data
     // if access success,first return index(>0),or return 0
-    function accessData(uint dataCategory,string name,
-                        string category, address people,uint index) public view withPermit(people,dataCategory)returns(uint, uint8[28*28]){
+    function accessData(uint dataCategory,address people,uint index) public view withPermit(people,dataCategory)returns(uint, uint8[28*28]){
         require(personInfo[people].exist == true, "people don't exist");
-        dataLog(dataCategory,category,name,people);
+        recordDataAcess(1,people); // 001 -- data
         data tdata = personInfo[people].datas[index];
         string memory c = numToCategory[dataCategory];
         license storage tlicense = personInfo[people].permission[msg.sender][c];
@@ -204,30 +203,29 @@ contract dataController is Ownable {
 
     // get the log
     // if access success,first return index(>0),or return 0
-    //TODO : the stack is too deep,split this function
-    function accessLog(uint dataCategory, string category,string name, address people, uint index) public view withPermit(people,dataCategory) returns(uint,string,uint){
+    function accessHospitalLog(uint dataCategory, address people, uint index) public view withPermit(people,dataCategory) returns(uint,string,uint){
         require(personInfo[people].exist == true, "don't exist");
-        dataLog(dataCategory,category,name,people);
-        if(dataCategory == 2) {
-            log tlog = personInfo[people].hospitalLogs[index];
-            string memory c = numToCategory[dataCategory];
-            license storage tlicense = personInfo[people].permission[msg.sender][c];
-            if(timeFilter(tlog.logTimestamp,tlicense.start,tlicense.end)) {
-                return (index, tlog.institutionName, tlog.cate);
-            } else {
-                return (0, tlog.institutionName, tlog.cate);
-            }
-        } else if(dataCategory == 4) {
-            log tlog2 = personInfo[people].insuranceLogs[index];
-            string memory c2 = numToCategory[dataCategory];
-            license storage tlicense2 = personInfo[people].permission[msg.sender][c2];
-            if(timeFilter(tlog2.logTimestamp,tlicense2.start,tlicense2.end)) {
-                return (index, tlog2.institutionName, tlog2.cate);
-            } else {
-                return (0, tlog2.institutionName, tlog.cate);
-            }
+        recordDataAcess(2,people); // 010 -- hospital
+        log tlog = personInfo[people].hospitalLogs[index];
+        string memory c = numToCategory[dataCategory];
+        license storage tlicense = personInfo[people].permission[msg.sender][c];
+        if(timeFilter(tlog.logTimestamp,tlicense.start,tlicense.end)) {
+            return (index, tlog.institutionName, tlog.cate);
         } else {
-            revert("wrong dataCategory");
+                return (0, tlog.institutionName, tlog.cate);
+        }
+    }
+    
+    function accessInsuranceLog(uint dataCategory,address people, uint index) public view withPermit(people,dataCategory) returns(uint,string,uint){
+        require(personInfo[people].exist == true, "don't exist");
+        recordDataAcess(4,people); //100 -- insurance
+        log tlog = personInfo[people].insuranceLogs[index];
+        string memory c = numToCategory[dataCategory];
+        license storage tlicense = personInfo[people].permission[msg.sender][c];
+        if(timeFilter(tlog.logTimestamp,tlicense.start,tlicense.end)) {
+            return (index, tlog.institutionName, tlog.cate);
+        } else {
+            return (0, tlog.institutionName, tlog.cate);
         }
     }
 
@@ -258,18 +256,18 @@ contract dataController is Ownable {
             }
         }
     }
-    // record who has access the person's data
-    function dataLog(uint dataCategory,string category,string name, address people) internal {
+    // record log of  access the  data
+    function recordDataAcess(uint dataCategory,address people) internal {
         require(personInfo[people].exist == true, "don't exist");
-        log storage tlog;
-        tlog.cate.add(dataCategory);
-        tlog.category = category;
-        tlog.institutionName = name;
-        tlog.logTimestamp = block.timestamp;
-        if (keccak256(abi.encodePacked(dataCategory)) == keccak256(abi.encodePacked("hospital"))) {
-            personInfo[people].hospitalLogs.push(tlog);
-        }else if (keccak256(abi.encodePacked(dataCategory)) == keccak256(abi.encodePacked("insurance"))) {
-            personInfo[people].insuranceLogs.push(tlog);
+        log storage tmplog;
+        tmplog.cate = dataCategory;
+        tmplog.category = institutionInfo[msg.sender].category;
+        tmplog.institutionName = institutionInfo[msg.sender].name;
+        tmplog.logTimestamp = block.timestamp;
+        if (keccak256(abi.encodePacked(tmplog.category)) == keccak256(abi.encodePacked("hospital"))) {
+            personInfo[people].hospitalLogs.push(tmplog);
+        }else if (keccak256(abi.encodePacked(tmplog.category)) == keccak256(abi.encodePacked("insurance"))) {
+            personInfo[people].insuranceLogs.push(tmplog);
         }
     }
     
