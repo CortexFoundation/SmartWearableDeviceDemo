@@ -9,11 +9,17 @@ contract DataController is Ownable {
 // -------------------------- Pre-defined Structure ----------------------------
 
     // the heath information collect by wristband
-    struct Data {
-        // when upload the data
-        uint256 dataTimestamp;
-        // low level feature data
-        uint8[28*28] metaData; 
+    struct Statistics {
+        // time duration of these statistics
+        uint256 startTs;    //start timestamp
+        uint256 endTs;      //stop timestamp
+        /**
+       * Encoded Statistics API
+       *
+       * It's the Statistics collected through the smart bracelet.And the chip in 
+       * the bracelet will encode the data
+       **/
+        uint8[28*28] encodedData;
     }
 
     // the data access log of user's data
@@ -30,9 +36,7 @@ contract DataController is Ownable {
 
     // the feedback for service actions
     struct Feedback {
-      uint256 startTs; // start timestamp
-      uint256 stopTs; // stop timestamp
-
+      uint256 fbTimestamp; // start timestamp
       /**
        * Encoded Feedback API
        *
