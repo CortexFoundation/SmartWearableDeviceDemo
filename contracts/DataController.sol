@@ -56,7 +56,8 @@ contract DataController is Ownable {
         string category;
     }
 
-// ----------------------------- Event --------------------------------------
+// --------------------------------- Event -------------------------------------
+
     event registerSuccess(address _peopleAddress);
 
 
@@ -65,19 +66,19 @@ contract DataController is Ownable {
     // categorty of data
     mapping (uint => string) numToCategory;
     uint256 INT_MAX = 2**256 - 1;
-    //the number of data & log category,temporarily is 3
+    // the number of data & log category,temporarily is 3
     uint constant NUMCATE = 3;
-    //time period the number of the block
+    // time period the number of the block
     uint constant PERIODBLOCK = 5;
     uint period = 5; // block number to time of permission
     // every insurance contract has its own address;
     mapping (string => address) insuranceAddress;
-    //all the data about people
+    // all the data about people
     mapping (address => Person) private personInfo;
-    //all the data about institution
+    // all the data about institution
     mapping (address => Institution) private institutionInfo;
     
-    //storage the information temporarily
+    // storage the information temporarily
     // Data private dataCache;
     // Log private logCache;
 
@@ -90,18 +91,18 @@ contract DataController is Ownable {
 
 // ------------------------- Contract Authorization ----------------------------
 
-    //the person who has been register
+    // the person who has been register
     modifier personExistOnly() {
         require(personInfo[msg.sender].exist == true, 
         "this person has not register yet!");
         _;
     }
-    //test if the _category is allowed by the people 
+    // test if the _category is allowed by the people 
     modifier withPermit(address _peopleAddress,uint _permissionCategory) {
         License storage tmpLicense = personInfo[_peopleAddress].permissionList[msg.sender];
-        //One authorization only takes effect within 5 blocks
+        // One authorization only takes effect within 5 blocks
         require(tmpLicense.existTime.add(PERIODBLOCK) < block.number,
-        "is not allowed to accesss the data now!");
+          "is not allowed to accesss the data now!");
         _;
     }
     /**
@@ -144,7 +145,8 @@ contract DataController is Ownable {
     }
     
     // upload the preliminary data
-    function uploadData(address _personId, uint8[28*28] _metaData) public personExistOnly onlyOwner {
+    function uploadData(address _personId, uint8[28*28] _metaData)
+      public personExistOnly onlyOwner {
         Data storage tmpData;
         tmpData.metaData = _metaData;
         tmpData.dataTimestamp = block.timestamp;
@@ -181,12 +183,12 @@ contract DataController is Ownable {
         }
     }
 
-    //user cacel the permission of all the category data access
+    // user cacel the permission of all the category data access
     function personDeauthorize(address _institutionId) public personExistOnly {
         deauthorize(_institutionId,0); // 000 cacel all the data
     }
     
-    //user cacel his own account
+    // user cacel his own account
     function cacelData() public personExistOnly {
         delete personInfo[msg.sender];
     }
@@ -200,9 +202,9 @@ contract DataController is Ownable {
         i.category = _category;
     }
 
-    //get the number of data struct
+    // get the number of data struct
     function getDataNum(
-        uint _dataCategory, //type of data&log wan to access[only use 001,010,100]
+        uint _dataCategory, // type of data&log wan to access[only use 001,010,100]
         address _personId   
     ) 
         public 
@@ -225,8 +227,8 @@ contract DataController is Ownable {
     }
     
     // get the body feature statistics.
-    //if have the permit of data &access success,first return data index(>0) & the metadata
-    //or not be allowed to get the time duration data return 0
+    // if have the permit of data &access success,first return data index(>0) & the metadata
+    // or not be allowed to get the time duration data return 0
     function accessData(
         uint _dataCategory,
         address _personId,
@@ -340,6 +342,8 @@ contract DataController is Ownable {
         tmplog.category = institutionInfo[msg.sender].category;
         tmplog.institutionName = institutionInfo[msg.sender].name;
         tmplog.logTimestamp = block.timestamp;
+
+        // TODO(ljj): wrapper the keccak as a function returns string.
         if (keccak256(abi.encodePacked(tmplog.category)) == keccak256(abi.encodePacked("hospital"))) {
             personInfo[_personId].hospitalLogs.push(tmplog);
         }else if (keccak256(abi.encodePacked(tmplog.category)) == keccak256(abi.encodePacked("insurance"))) {
@@ -363,7 +367,7 @@ contract DataController is Ownable {
         }
     }
 
-    //TODO : the timestamp problem 
+    // TODO : the timestamp problem 
     // function logArrange(uint dataCategory) internal
 
 }
