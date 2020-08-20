@@ -9,16 +9,16 @@ contract DataController is Ownable {
 // -------------------------- Pre-defined Structure ----------------------------
 
     // the heath information collect by wristband
-      
     struct Data {
         // when upload the data
         uint256 dataTimestamp;
         // low level feature data
         uint8[28*28] metaData; 
     }
-    // the data access log of information
+
+    // the data access log of user's data
     struct Log {
-        // the category of institution who access the information
+        // the category of institution who access the user data
         string category;  
         // when access the data
         uint256 logTimestamp;   
@@ -26,6 +26,21 @@ contract DataController is Ownable {
         string institutionName; 
         // what data has been visited,[001 -- data,010 -- hospitalLog, 100 -- insuranceLog]
         uint cate;  
+    }
+
+    // the feedback for service actions
+    struct Feedback {
+      uint256 startTs; // start timestamp
+      uint256 stopTs; // stop timestamp
+
+      /**
+       * Encoded Feedback API
+       *
+       * It's an public feedback after performing server, such as the
+       *  insurance purchase, claim, ..., etc. We will define the feedback
+       *  data encoder via communicating with all the service suppliers.
+       **/
+      uint8[28*28] encodedData; // the encoded feedback for service
     }
     
     struct License {
