@@ -217,29 +217,84 @@ contract DataController is Ownable {
         i.category = _category;
     }
 
-    // get the number of data struct
-    function getDataNum(
-        uint _dataCategory, // type of data&log wan to access[only use 001,010,100]
-        address _personId   
+    //obtain an index range of data
+    function getDataAvailableIndex(
+        address _personId,
+        uint _dataCategory  //the category of data want to obtain
     ) 
         public 
-        view
+        view 
         withPermit(_personId,_dataCategory)
-        returns(uint)
-    {
-        if(_dataCategory == 1) {
-            return personInfo[_personId].datas.length;
-        } 
-        else if(_dataCategory == 2) {
-            return personInfo[_personId].hospitalLogs.length;
-        } 
-        else if(_dataCategory == 4) {
-            return personInfo[_personId].insuranceLogs.length;
-        } 
-        else {
-            revert("get the wrong dataCategory");
+        returns(uint, uint) //-1 -- don't get exactly index
+        {
+            uint startIndex = 0;
+            uint endIndex = 0;
+            uint len = getDataNum(_personId,_dataCategory);
+            uint i = 0;
+            uint j = len - 1;
+            for (i; i < len; i++) {
+                if(personInfo[_personId].datas[i].dataTimestamp <= personInfo[_personId].permissionList[msg.sender].start) {
+                    startIndex = i;
+                    break;
+                }
+            }
+            if(startIndex == 0 && i != 0) {
+                return (0,0);
+            }
+            for(j; j >= i; j--) {
+                if (personInfo[_personId].datas[j].dataTimestamp >= personInfo[_personId].permissionList[msg.sender].end) {
+                    endIndex = j;
+                    break;
+                }
+            }
+            if(endIndex == 0 && (j != len-1)) {
+                return(0,0);
+            }
+            return(startIndex,endIndex);
         }
-    }
+        
+    //obtain an index range of log
+    function getLogAvailableIndex(
+        address _personId,
+        uint _dataCategory  //the category of data want to obtain
+    ) 
+        public 
+        view 
+        withPermit(_personId,_dataCategory)
+        returns(uint, uint) //-1 -- don't get exactly index
+        {
+            uint startIndex = 0;
+            uint endIndex = 0;
+            uint len = getDataNum(_personId,_dataCategory);
+            uint i = 0;
+            uint j = len - 1;
+            Logs[] storage tmpLogs;
+            if (_dataCategory == 2) {
+                tmpLogs = personInfo[_personId].hospitalLogs;
+            }
+            else if(_dataCategory = 4) {
+                tmpLogs = personInfo[_personId].insuranceLogs;
+            }
+            for (i; i < len; i++) {
+                if(tmpLogs[i].dataTimestamp <= personInfo[_personId].permissionList[msg.sender].start) {
+                    startIndex = i;
+                    break;
+                }
+            }
+            if(startIndex == 0 && i != 0) {
+                return (0,0);
+            }
+            for(j; j >= i; j--) {
+                if (tmpLogs[j].dataTimestamp >= personInfo[_personId].permissionList[msg.sender].end) {
+                    endIndex = j;
+                    break;
+                }
+            }
+            if(endIndex == 0 && (j != len-1)) {
+                return(0,0);
+            }
+            return(startIndex,endIndex);
+        }
     
     // get the body feature statistics.
     // if have the permit of data &access success,first return data index(>0) & the metadata
@@ -379,6 +434,30 @@ contract DataController is Ownable {
             return false;
         } else {
             return true;
+        }
+    }
+
+    // get the number of data struct
+    function getDataNum(
+        uint _dataCategory, // type of data&log wan to access[only use 001,010,100]
+        address _personId   
+    ) 
+        internal 
+        view
+        withPermit(_personId,_dataCategory)
+        returns(uint)
+    {
+        if(_dataCategory == 1) {
+            return personInfo[_personId].datas.length;
+        } 
+        else if(_dataCategory == 2) {
+            return personInfo[_personId].hospitalLogs.length;
+        } 
+        else if(_dataCategory == 4) {
+            return personInfo[_personId].insuranceLogs.length;
+        } 
+        else {
+            revert("get the wrong dataCategory");
         }
     }
 
