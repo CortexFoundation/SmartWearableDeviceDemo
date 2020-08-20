@@ -35,6 +35,27 @@ contract InsuranceService is GeneralService {
     }
     
     // --- moderator functions --- 
+    function getAvaialbleServicesByUser(address _userAddr) 
+        public view moderatorOnly returns(uint256)
+    {
+        return availableServicesByUser[_userAddr];
+    }
+    
+    function getActiveServicesByUser(address _userAddr) 
+        public view moderatorOnly returns(uint256)
+    {
+        return activeServicesByUser[_userAddr];
+    }
+    
+    function isServiceActiveByUser(address _userAddr, uint8 _serviceIndex) 
+        public view moderatorOnly returns(bool)
+    {
+        if((availableServicesByUser[_userAddr] >> _serviceIndex & 1) == 1){
+            return true;
+        }
+        return false;
+    }
+    
     function updateCompanyName(string _newName) public moderatorOnly {
         companyName = _newName;
     }
@@ -91,7 +112,7 @@ contract InsuranceService is GeneralService {
     function payment(address _userAddr, uint8 _serviceIndex) public moderatorOnly {
         // TODO: check user's current health condition first,
         // require TRUE for payment
-        if(isServiceActive(_userAddr, _serviceIndex)){
+        if(isServiceActiveByUser(_userAddr, _serviceIndex)){
             require(
                 address(this).balance >= services[_serviceIndex].payment, 
                 "Insufficient fund"
@@ -112,22 +133,10 @@ contract InsuranceService is GeneralService {
         return (services[_serviceIndex].name, services[_serviceIndex].fee);
     }
     
-    function getAvaialbleServicesByUser(address _userAddr) 
-        public view returns(uint256)
-    {
-        return availableServicesByUser[_userAddr];
-    }
-    
-    function getActiveServicesByUser(address _userAddr) 
-        public view returns(uint256)
-    {
-        return activeServicesByUser[_userAddr];
-    }
-    
-    function isServiceActive(address _userAddr, uint8 _serviceIndex) 
+    function isServiceActive(uint8 _serviceIndex) 
         public view returns(bool)
     {
-        if((availableServicesByUser[_userAddr] >> _serviceIndex & 1) == 1){
+        if((availableServicesByUser[msg.sender] >> _serviceIndex & 1) == 1){
             return true;
         }
         return false;
