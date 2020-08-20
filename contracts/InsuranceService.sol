@@ -1,7 +1,11 @@
 pragma solidity ^0.4.24;
+
 import "./Service.sol";
+import "./SafeMath.sol";
+import "./DataController.sol";
 
 contract InsuranceService is GeneralService {
+    using SafeMath for uint;
     
     // service structure for this insruance company.
     // other companies might have different structure
@@ -12,11 +16,12 @@ contract InsuranceService is GeneralService {
         uint256 payment;
     }
     
+    address public dataControllerAddress = 0xe2d50CFb680ffD3E39a187ae8C22B4f81b092A10;
     address public moderator;
     Service[] services;
     uint256[] public inputData;
     
-    constructor() public {
+    constructor() public payable {
         moderator = msg.sender;
         companyName = "XiHongShi Insurance";
         services.push(Service("1", 5, 1, 10));
@@ -29,24 +34,63 @@ contract InsuranceService is GeneralService {
         _;
     }
     
+    // --- moderator functions --- 
     function updateCompanyName(string _newName) public moderatorOnly {
         companyName = _newName;
     }
     
-    // --- moderator functions --- 
-    function addService(string _name, uint256 _riskThreshold, uint256 _fee, uint256 _payment) public moderatorOnly {
+    function updateDataControllerAddress(address _newAddr) public moderatorOnly {
+        dataControllerAddress = _newAddr;
+    }
+    
+    function registerInstitution() public moderatorOnly {
+        dataController(dataControllerAddress).registerInstitution(companyName, "Insurance");
+    }
+    
+    function addService(
+        string _name, 
+        uint256 _riskThreshold, 
+        uint256 _fee, 
+        uint256 _payment
+    ) 
+        public 
+        moderatorOnly 
+        returns
+    {
         services.push(Service(_name, _riskThreshold, _fee, _payment));
     }
     
-    function updateService(uint256 _index, string _newName, uint256 _riskThreshold) public moderatorOnly {
+    function updateService(
+        uint256 _index, 
+        string _newName, 
+        uint256 _riskThreshold
+    ) 
+        public 
+        moderatorOnly 
+    {
         services[_index].name = _newName;
         services[_index].riskThreshold = _riskThreshold;
     }
     
-    // TODO: check user's current health condition first,
-    // require TRUE for payment
+    function withdraw(uint256 _value) public moderatorOnly {
+        require(address(this).balance >= _value, "Insufficient fund");
+        msg.sender.transfer(_value);
+    }
+    
+    function withdrawAll() public moderatorOnly {
+        require(address(this).balance > 0, "Insufficient fund");
+        msg.sender.transfer(address(this).balance);
+    }
+    
+    function deposit() public payable moderatorOnly {
+        require(msg.value > 0, "You have to deposit at least 1 unit of CTXC");
+    }
+    
     function payment(address _userAddr, uint8 _serviceIndex) public moderatorOnly {
+        // TODO: check user's current health condition first,
+        // require TRUE for payment
         if(isServiceActive(_userAddr, _serviceIndex)){
+            require(address(this).balance >= services[_serviceIndex].payment, "Insufficient fund");
             _userAddr.transfer(services[_serviceIndex].payment);
         }
     }
@@ -81,8 +125,8 @@ contract InsuranceService is GeneralService {
     // use compressed integer for requesting caterories
     // e.g., 0101 => cat 3 & 1
     function requestAuthorisation(address _clientAddr, uint256 _categories) public {
-        _clientAddr = address(0);
-        services[_categories] = Service("123", 2,2,4);
+        // FIXME: check arguments
+        dataController(dataControllerAddress).authorize(address(this), 1, 2, 3);
     }
     
     function getAvaialbleServices(address _userAddr, address _modelHash) public returns(uint256){
@@ -114,8 +158,8 @@ contract InsuranceService is GeneralService {
     }
     
     function getUserData(uint _dataCategory) internal {
-        // FIXME: get user data from data contract
-        inputData = new uint256[](_dataCategory);
+        // FIXME: check arguments
+        (_, inputData) = dataController(dataControllerAddress).accessData(_dataCategory, companyName, "cat1", address(this), 1);
     }
     
     

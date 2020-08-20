@@ -1,13 +1,9 @@
 pragma solidity ^0.4.24;
 // pragma experimental ABIEncoderV2;
 
-import "./SafeMath.sol";
-
 // last implemented contract: 0x70ae5b30c81d00cc4b6cbe765a71ab89e35d2cc4
 contract GeneralService {
-    using SafeMath for uint;
     
-    // address public modelAddr = 0xe2d50CFb680ffD3E39a187ae8C22B4f81b092A10;
     string public companyName;
     uint8 public USER_DATA_COUNT = 10;
     // 0: low risk, 1: medium risk, 2: high risk
