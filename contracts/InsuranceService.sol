@@ -44,7 +44,10 @@ contract InsuranceService is GeneralService {
     }
     
     function registerInstitution() public moderatorOnly {
-        dataController(dataControllerAddress).registerInstitution(companyName, "Insurance");
+        DataController(dataControllerAddress).registerInstitution(
+            companyName, 
+            "Insurance"
+        );
     }
     
     function addService(
@@ -55,7 +58,6 @@ contract InsuranceService is GeneralService {
     ) 
         public 
         moderatorOnly 
-        returns
     {
         services.push(Service(_name, _riskThreshold, _fee, _payment));
     }
@@ -90,7 +92,10 @@ contract InsuranceService is GeneralService {
         // TODO: check user's current health condition first,
         // require TRUE for payment
         if(isServiceActive(_userAddr, _serviceIndex)){
-            require(address(this).balance >= services[_serviceIndex].payment, "Insufficient fund");
+            require(
+                address(this).balance >= services[_serviceIndex].payment, 
+                "Insufficient fund"
+            );
             _userAddr.transfer(services[_serviceIndex].payment);
         }
     }
@@ -101,19 +106,27 @@ contract InsuranceService is GeneralService {
         return services.length;
     }
     
-    function getService(uint8 _serviceIndex) public view returns(string, uint256) {
+    function getService(uint8 _serviceIndex) 
+        public view returns(string, uint256) 
+    {
         return (services[_serviceIndex].name, services[_serviceIndex].fee);
     }
     
-    function getAvaialbleServicesByUser(address _userAddr) public view returns(uint256){
+    function getAvaialbleServicesByUser(address _userAddr) 
+        public view returns(uint256)
+    {
         return availableServicesByUser[_userAddr];
     }
     
-    function getActiveServicesByUser(address _userAddr) public view returns(uint256){
+    function getActiveServicesByUser(address _userAddr) 
+        public view returns(uint256)
+    {
         return activeServicesByUser[_userAddr];
     }
     
-    function isServiceActive(address _userAddr, uint8 _serviceIndex) public view returns(bool){
+    function isServiceActive(address _userAddr, uint8 _serviceIndex) 
+        public view returns(bool)
+    {
         if((availableServicesByUser[_userAddr] >> _serviceIndex & 1) == 1){
             return true;
         }
@@ -126,10 +139,17 @@ contract InsuranceService is GeneralService {
     // e.g., 0101 => cat 3 & 1
     function requestAuthorisation(address _clientAddr, uint256 _categories) public {
         // FIXME: check arguments
-        dataController(dataControllerAddress).authorize(address(this), 1, 2, 3);
+        DataController(dataControllerAddress)
+            .authorize(_clientAddr, _categories, 2, 3);
     }
     
-    function getAvaialbleServices(address _userAddr, address _modelHash) public returns(uint256){
+    function getAvaialbleServices(
+        address _userAddr, 
+        address _modelHash
+    ) 
+        public 
+        returns(uint256)
+    {
         // infer risk factor based on user's physical data
         uint256[] memory infer_output = new uint256[](1);
         uint256 overallRisk = 0;
@@ -159,7 +179,12 @@ contract InsuranceService is GeneralService {
     
     function getUserData(uint _dataCategory) internal {
         // FIXME: check arguments
-        (_, inputData) = dataController(dataControllerAddress).accessData(_dataCategory, companyName, "cat1", address(this), 1);
+        uint index = 1;
+        (index, inputData) = DataController(
+            dataControllerAddress).accessData(_dataCategory, 
+            address(this), 
+            index
+        );
     }
     
     
@@ -174,7 +199,8 @@ contract InsuranceService is GeneralService {
             // refund excess payment
             msg.sender.transfer(services[_serviceIndex].fee - msg.value);
         }
-        activeServicesByUser[msg.sender] = activeServicesByUser[msg.sender] | (1 << _serviceIndex);
+        activeServicesByUser[msg.sender] = 
+            activeServicesByUser[msg.sender] | (1 << _serviceIndex);
     }
     
     // get data from data contract
