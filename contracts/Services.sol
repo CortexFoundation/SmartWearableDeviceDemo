@@ -9,8 +9,8 @@ contract GeneralService {
     // 0: low risk, 1: medium risk, 2: high risk
     uint8 public RISK_LEVEL_COUNT = 3;
     
-    mapping(address => uint256) public availableServicesByUser;
-    mapping(address => uint256) public activeServicesByUser;
+    mapping(address => uint256) availableServicesByUser;
+    mapping(address => uint256) activeServicesByUser;
     
     
     // --- getters --- 
@@ -18,11 +18,15 @@ contract GeneralService {
     
     function getService(uint8 _serviceIndex) public view returns(string, uint256);
     
-    function getAvaialbleServicesByUser(address _userAddr) public view returns(uint256);
+    function isServiceActive(uint8 _serviceIndex) public view returns(bool);
     
-    function getActiveServicesByUser(address _userAddr) public view returns(uint256);
+    function getAvaialbleServices() public view returns(uint256) {
+        return availableServicesByUser[msg.sender];
+    }
     
-    function isServiceActive(address _userAddr, uint8 _serviceIndex) public view returns(bool);
+    function getActiveServices() public view returns(uint256) {
+        return activeServicesByUser[msg.sender];
+    }
     
     
     // --- service AI inferences --- 
