@@ -4,8 +4,12 @@ import "./Service.sol";
 import "./SafeMath.sol";
 import "./DataController.sol";
 
-contract InsuranceService is GeneralService {
+contract XiHongShiInsurance is Insurance {
     using SafeMath for uint;
+
+    uint8 public USER_DATA_COUNT = 10;
+    // 0: low risk, 1: medium risk, 2: high risk
+    uint8 public RISK_LEVEL_COUNT = 3;
     
     // service structure for this insruance company.
     // other companies might have different structure
@@ -27,11 +31,6 @@ contract InsuranceService is GeneralService {
         services.push(Service("1", 5, 1, 10));
         services.push(Service("2", 7, 2, 20));
         services.push(Service("3", 15, 3, 30));
-    }
-    
-    modifier moderatorOnly() {
-        require(msg.sender == moderator, "Moderator Only");
-        _;
     }
     
     // --- moderator functions --- 
@@ -215,12 +214,12 @@ contract InsuranceService is GeneralService {
     
     // get data from data contract
     // used for insurance payment 
-    function checkCurrentHealthCondition(address _userAddr) public pure returns(bool){
-        if(_userAddr == address(0)){
-            return true;
-        }
-        else{
-            return false;
-        }
+    function checkCurrentHealthCondition(address _userAddr) public returns(bool){
+      if(_userAddr == address(0)){
+          return true;
+      }
+      else{
+          return false;
+      }
     }
 }
