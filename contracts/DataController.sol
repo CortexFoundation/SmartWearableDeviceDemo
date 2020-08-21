@@ -20,7 +20,7 @@ contract DataController is Ownable {
        * It's the Statistics collected through the smart bracelet.And the chip in 
        * the bracelet will encode the data
        **/
-        uint8[28*28] encodedData;
+        uint[25] encodedData;
     }
 
     // the data access log of user's data
@@ -44,15 +44,15 @@ contract DataController is Ownable {
        *  insurance purchase, claim, ..., etc. We will define the feedback
        *  data encoder via communicating with all the service suppliers.
        **/
-      uint8[28*28] encodedData; // the encoded feedback for service
+      uint[25] encodedData; // the encoded feedback for service
     }
     
     struct License {
         // when get the license (using blkNumber)
         uint existTime;
         // time period of data that can be accessed,[start,end]
-        uint start;
-        uint end;
+        int start;
+        int end;
         //show what kind of data access is allowed.
         mapping (uint => bool) permission;
     }
@@ -166,7 +166,7 @@ contract DataController is Ownable {
     }
     
     // upload the preliminary data
-    function uploadData(address _personId, uint8[28*28] _metaData)
+    function uploadData(address _personId, uint[25] _metaData)
         public
         personExistOnly
         onlyOwner 
@@ -187,12 +187,13 @@ contract DataController is Ownable {
      **/
 
     // grant acess to institution & change permission
-    // TODO(ljj): the -1 indicates all over the all blocks.
+    // _start = -1 --start at the first element
+    //_stop = -1 -- stop at the newest element
     function authorize(
         address _institutionId,  // the adress of institution which is authorized to
         uint _au,   // what kind of permission (eg. 11111 - all the data &log could access)
-        uint _start, // the start of time period that data can be access
-        uint _end   // the end of time period that data can be access
+        int _start, // the start of time period that data can be access
+        int _stop   // the end of time period that data can be access
         )
         public
         personExistOnly 
@@ -204,7 +205,7 @@ contract DataController is Ownable {
                 License storage tmpLicense = personInfo[msg.sender].licenseList[_institutionId];
                 tmpLicense.existTime = block.number;
                 tmpLicense.start = _start;
-                tmpLicense.end = _end;
+                tmpLicense.end = _stop;
                 tmpLicense.permission[tmp] = true;
             }
         }
@@ -227,29 +228,29 @@ contract DataController is Ownable {
      *  Service, exposing interface to user.
      **/
 
-    function getNumberOfServices() public view returns(uint256) {
-      _;
-    }
+    // function getNumberOfServices() public view returns(uint256) {
+    //   _;
+    // }
 
-    function getService(uint8 _serviceIndex)
-        public view returns(string, uint256) {
-      _;
-    }
+    // function getService(uint8 _serviceIndex)
+    //     public view returns(string, uint256) {
+    //   _;
+    // }
 
-    function isServiceActive(uint8 _serviceIndex)
-        public view returns(bool) {
-      _;
-    }
+    // function isServiceActive(uint8 _serviceIndex)
+    //     public view returns(bool) {
+    //   _;
+    // }
 
-    function getAvailableServices()
-        public view returns(uint256) {
-      _;
-    }
+    // function getAvailableServices()
+    //     public view returns(uint256) {
+    //   _;
+    // }
 
-    function getActiveServices()
-        public view returns9uint256) {
-      _;
-    }
+    // function getActiveServices()
+    //     public view returns(uint256) {
+    //   _;
+    // }
 
 // ------------------------- Institution Interface -----------------------------
 
@@ -272,13 +273,13 @@ contract DataController is Ownable {
     returns(uint, uint)
     {
         if (_dataCategory == 1) {
-            return getAvailableStatisticIndex();
+            return getAvailableStatisticIndex(_personId,msg.sender,_dataCategory);
         } 
         else if (_dataCategory == 2 || _dataCategory == 4) {
-            return getAvailableLogIndex();
+            return getAvailableLogIndex(_personId,msg.sender,_dataCategory);
         } 
         else if(_dataCategory == 8 || _dataCategory == 16) {
-            return getAvailableReceiptIndex();
+            return getAvailableReceiptIndex(_personId,msg.sender,_dataCategory);
         }
         else {
             revert("get the wrong _dataCategory code");
@@ -360,10 +361,10 @@ contract DataController is Ownable {
         }
     }
 
-    // every insurance service has its own contract address
-    function setInsuranceInstance(string _name, address _address) public onlyOwner {
-        insuranceAddress[_name] = _address;
-    }
+    // // every insurance service has its own contract address
+    // function setInsuranceInstance(string _name, address _address) public onlyOwner {
+    //     insuranceAddress[_name] = _address;
+    // }
 
     function getInstitutionName(address _address) public view returns(string memory){
         require(institutionInfo[_address].exist == true, "this institution not exist");
@@ -402,7 +403,6 @@ contract DataController is Ownable {
         tmpLog.institutionName = institutionInfo[msg.sender].name;
         tmpLog.logTimestamp = block.timestamp;
 
-        // TODO(ljj): wrapper the keccak as a function returns string.
         if (stringEqual(tmpLog.category,"hospital")) {
             personInfo[_personId].hospitalLogs.push(tmpLog);
         } else if (stringEqual(tmpLog.category,"insurance")) {
@@ -428,28 +428,28 @@ contract DataController is Ownable {
         }
     }
 
-    // get the number of data struct
-    function getDataNum(
-        uint _dataCategory, // type of data&log wan to access[only use 001,010,100]
-        address _personId   
-    ) 
-        internal 
-        view
-        returns(uint)
-    {
-        if(_dataCategory == 1) {
-            return personInfo[_personId].datas.length;
-        } 
-        else if(_dataCategory == 2) {
-            return personInfo[_personId].hospitalLogs.length;
-        } 
-        else if(_dataCategory == 4) {
-            return personInfo[_personId].insuranceLogs.length;
-        } 
-        else {
-            revert("get the wrong dataCategory");
-        }
-    }
+    // // get the number of data struct
+    // function getDataNum(
+    //     uint _dataCategory, // type of data&log wan to access[only use 001,010,100]
+    //     address _personId   
+    // ) 
+    //     internal 
+    //     view
+    //     returns(uint)
+    // {
+    //     if(_dataCategory == 1) {
+    //         return personInfo[_personId].datas.length;
+    //     } 
+    //     else if(_dataCategory == 2) {
+    //         return personInfo[_personId].hospitalLogs.length;
+    //     } 
+    //     else if(_dataCategory == 4) {
+    //         return personInfo[_personId].insuranceLogs.length;
+    //     } 
+    //     else {
+    //         revert("get the wrong dataCategory");
+    //     }
+    // }
     
     function stringEqual(string a, string b) internal pure returns(bool) {
         if(keccak256(abi.encodePacked(a)) == keccak256(abi.encodePacked(b))) {
@@ -464,162 +464,192 @@ contract DataController is Ownable {
     // TODO : the timestamp problem 
     // function logArrange(uint dataCategory) internal
     
-    //obtain an available index range of feedbacks of people
-    //inclding hospitalRecipt & insuranceReceipts
     function getAvailableStatisticIndex(
-        address _personId,
-        address _institutionId,
-        uint _dataCategory  //the category of data want to obtain
+        address _personId, 
+        address _institutionId, // who want to get the index
+        uint _dataCategory  // the category of data want to obtain
     ) 
         internal 
-        view 
-        returns(uint, uint) //(0,0) -- don't get exactly index
-        {
-            uint startIndex = 0;
-            uint stopIndex = 0;
-            uint len = getDataNum(_personId,_dataCategory);
-            //the time duration of data can be accessed
-            uint beginLiceseTime = personInfo[_personId].liceseList[_institutionId].start;
-            uint endLiceseTime = personInfo[_personId].liceseList[_institutionId].end;
-            Receipt[] tmpReceipts;
-            bool findBegin;
-            bool findEnd;
-            
-            if (_dataCategory == 8) {
-                tmpReceipts = personInfo[_personId].hospitalReceipts;
-            }
-            else {
-                tmpReceipts = personInfo[_personId].insuranceReceipts;
-            }
-            
-            for (uint i = 0; i < len; i.add(1)) {
-                uint currentElemTime = (tmpReceipts[i].startTs + tmpReceipts[i].stopTs)/2;
-                //find the first element can access
-                if(isStartElem(currentElemTime,beginLiceseTime)) {
-                    startIndex = i;
-                    findBegin = true;
-                    break;
-                }
-            }
-            for(int j = uint(len-1); j >=0 ; j--) {
-                currentElemTime = (tmpReceipts[i].startTs + tmpReceipts[i].stopTs)/2;
-                if(isStopElem(currentElemTime,endLiceseTime)) {
-                    stopIndex = j;
-                    findEnd = true;
-                    break;
-                }
-            }
-            if(findEnd && findBegin) {
-                return (startIndex,stopIndex);
-            }
-            return (0,0);
+        view
+        returns(int, int) // -1 -- don't get exactly index
+    {
+        
+        //the time duration of data can be accessed
+        int beginLiceseTime = personInfo[_personId].liceseList[_institutionId].start;
+        int endLiceseTime = personInfo[_personId].liceseList[_institutionId].end;
+        
+        Statistic[] tmpStatistics = personInfo[_personId].statistics;
+        
+       return (findStartReceiptIndex(beginLiceseTime,tmpStatistics),
+            findStopReceiptIndex(endLiceseTime,tmpStatistics));
+    }
+    
+    function findStartStatisticIndex(int beginLiceseTime,Statistic[] tmpStatistics) internal view returns(int) {
+        //-1 indicate start with first element
+        if (beginLiceseTime == -1) {
+            return 0;
         }
-    //obtain an available index range of log
-    function getLogAvailableIndex(
-        address _personId,
-        uint _dataCategory  //the category of data want to obtain
+        int startIndex = -1;
+        beginLiceseTime = uint(beginLiceseTime);
+        int len = tmpStatistics.length;
+        for (int i = 0; i < len; i++) {
+            uint currentElemTime = tmpStatistics[i].startTs;
+            if(isEarly(beginLiceseTime, currentElemTime)) {
+                startIndex = i;
+                break;
+            }
+        }
+        return startIndex;
+    }
+    
+    function findStopStatisticIndex(int endLiceseTime,Log[] tmpStatistics) internal view returns(int) {
+        int len = tmpStatistics.length;
+        //-1 indicate start with first element
+        if (endLiceseTime == -1) {
+            return len-1;
+        }
+        int stopIndex = -1;
+        uint beginLiceseTime = uint(beginLiceseTime);
+        for (int i = len-1; i > 0; i--) {
+            uint currentElemTime = tmpStatistics[i].stopTs;
+            if(isEarly(currentElemTime,currentElemTime)) {
+                stopIndex = i;
+                break;
+            }
+        }
+        return stopIndex;
+    }
+    
+    
+    function getAvailableLogIndex(
+        address _personId, 
+        address _institutionId, // who want to get the index
+        uint _dataCategory  // the category of data want to obtain
     ) 
-        public 
-        view 
-        withPermit(_personId,_dataCategory)
-        returns(uint, uint) //-1 -- don't get exactly index
-        {
-            uint startIndex = 0;
-            uint endIndex = 0;
-            uint len = getDataNum(_personId,_dataCategory);
-            uint i = 0;
-            uint j = len - 1;
-            Log[] storage tmpLogs;
-            if (_dataCategory == 2) {
-                tmpLogs = personInfo[_personId].hospitalLogs;
-            }
-            else if(_dataCategory = 4) {
-                tmpLogs = personInfo[_personId].insuranceLogs;
-            }
-            for (i; i < len; i++) {
-                if(tmpLogs[i].dataTimestamp <= personInfo[_personId].permissionList[msg.sender].start) {
-                    startIndex = i;
-                    break;
-                }
-            }
-            if(startIndex == 0 && i != 0) {
-                return (0,0);
-            }
-            for(j; j >= i; j--) {
-                if (tmpLogs[j].dataTimestamp >= personInfo[_personId].permissionList[msg.sender].end) {
-                    endIndex = j;
-                    break;
-                }
-            }
-            if(endIndex == 0 && (j != len-1)) {
-                return(0,0);
-            }
-            return(startIndex,endIndex);
+        internal 
+        view
+        returns(int, int) // -1 -- don't get exactly index
+    {
+        
+        //the time duration of data can be accessed
+        int beginLiceseTime = personInfo[_personId].liceseList[_institutionId].start;
+        int endLiceseTime = personInfo[_personId].liceseList[_institutionId].end;
+        
+        Log[] tmpLogs;
+        if (_dataCategory == 8) {
+            tmpLogs = personInfo[_personId].hospitalLogs;
         }
+        else {
+            tmpLogs = personInfo[_personId].insuranceLogs;
+        }
+        
+        return (findStartReceiptIndex(beginLiceseTime,tmpLogs),
+            findStopReceiptIndex(endLiceseTime,tmpLogs));
+    }
+    
+    function findStartLogIndex(int beginLiceseTime,Log[] tmpLogs) internal view returns(int) {
+        //-1 indicate start with first element
+        if (beginLiceseTime == -1) {
+            return 0;
+        }
+        int startIndex = -1;
+        beginLiceseTime = uint(beginLiceseTime);
+        int len = tmpLogs.length;
+        for (int i = 0; i < len; i++) {
+            uint currentElemTime = tmpLogs[i].receiptTimestamp;
+            if(isEarly(beginLiceseTime, currentElemTime)) {
+                startIndex = i;
+                break;
+            }
+        }
+        return startIndex;
+    }
+    
+    function findStopLogIndex(int endLiceseTime,Log[] tmpLogs) internal view returns(int) {
+        int len = tmpLogs.length;
+        //-1 indicate start with first element
+        if (endLiceseTime == -1) {
+            return len-1;
+        }
+        int stopIndex = -1;
+        uint beginLiceseTime = uint(beginLiceseTime);
+        for (int i = len-1; i > 0; i--) {
+            uint currentElemTime = tmpLogs[i].receiptTimestamp;
+            if(isEarly(currentElemTime,currentElemTime)) {
+                stopIndex = i;
+                break;
+            }
+        }
+        return stopIndex;
+    }
         
     //obtain an available index range of feedbacks of people
     //inclding hospitalRecipt & insuranceReceipts
     function getAvailableReceiptIndex(
-        address _personId,
-        address _institutionId,
-        uint _dataCategory  //the category of data want to obtain
+        address _personId, 
+        address _institutionId, // who want to get the index
+        uint _dataCategory  // the category of data want to obtain
     ) 
         internal 
-        view 
-        returns(uint, uint) //(0,0) -- don't get exactly index
-        {
-            uint startIndex = 0;
-            uint stopIndex = 0;
-            uint len = getDataNum(_personId,_dataCategory);
-            //the time duration of data can be accessed
-            uint beginLiceseTime = personInfo[_personId].liceseList[_institutionId].start;
-            uint endLiceseTime = personInfo[_personId].liceseList[_institutionId].end;
-            Receipt[] tmpReceipts;
-            bool findBegin;
-            bool findEnd;
-            
-            if (_dataCategory == 8) {
-                tmpReceipts = personInfo[_personId].hospitalReceipts;
-            }
-            else {
-                tmpReceipts = personInfo[_personId].insuranceReceipts;
-            }
-            
-            for (uint i = 0; i < len; i.add(1)) {
-                uint currentElemTime = tmpReceipts[i].receiptTimestamp;
-                //find the first element can access
-                if(isStartElem(currentElemTime,beginLiceseTime)) {
-                    startIndex = i;
-                    findBegin = true;
-                    break;
-                }
-            }
-            for(int j = uint(len-1); j >=0 ; j--) {
-                currentElemTime = tmpReceipts[j].receiptTimestamp;
-                if(isStopElem(currentElemTime,endLiceseTime)) {
-                    stopIndex = j;
-                    findEnd = true;
-                    break;
-                }
-            }
-            if(findEnd && findBegin) {
-                return (startIndex,stopIndex);
-            }
-            return (0,0);
+        view
+        returns(int, int) // -1 -- don't get exactly index
+    {
+        //the time duration of data can be accessed
+        int beginLiceseTime = personInfo[_personId].liceseList[_institutionId].start;
+        int endLiceseTime = personInfo[_personId].liceseList[_institutionId].end;
+        
+        Receipt[] storage tmpReceipts;
+        if (_dataCategory == 8) {
+            tmpReceipts = personInfo[_personId].hospitalReceipts;
+        }
+        else {
+            tmpReceipts = personInfo[_personId].insuranceReceipts;
         }
         
-    //if the timestamp of current data packet can be begin access of the license begin
-    function isStartElem(uint _current, uint _begin) internal pure returns(bool) {
-        if (_begin <= _current) {
-            return true;
-        } else {
-            return false;
-        }
+        return (findStartReceiptIndex(beginLiceseTime,tmpReceipts),
+            findStopReceiptIndex(endLiceseTime,tmpReceipts));
     }
     
-    //if the timestamp of current data packet can be stop access of the license end
-    function isStopElem(uint _current, uint _end) internal pure returns(bool) {
-        if(_end >= _current) {
+    function findStartReceiptIndex(int beginLiceseTime,Receipt[] tmpReceipts) internal view returns(int) {
+        //-1 indicate start with first element
+        if (beginLiceseTime == -1) {
+            return 0;
+        }
+        int startIndex = -1;
+        beginLiceseTime = uint(beginLiceseTime);
+        int len = tmpReceipts.length;
+        for (int i = 0; i < len; i++) {
+            uint currentElemTime = tmpReceipts[i].receiptTimestamp;
+            if(isEarly(beginLiceseTime, currentElemTime)) {
+                startIndex = i;
+                break;
+            }
+        }
+        return startIndex;
+    }
+    
+    function findStopReceiptIndex(int endLiceseTime,Receipt[] tmpReceipts) internal view returns(int) {
+        int len = tmpReceipts.length;
+        //-1 indicate start with first element
+        if (endLiceseTime == -1) {
+            return len-1;
+        }
+        int stopIndex = -1;
+        uint beginLiceseTime = uint(beginLiceseTime);
+        for (int i = len-1; i > 0; i--) {
+            uint currentElemTime = tmpReceipts[i].receiptTimestamp;
+            if(isEarly(currentElemTime,currentElemTime)) {
+                stopIndex = i;
+                break;
+            }
+        }
+        return stopIndex;
+    }
+    
+    
+    //if the timestamp of _A is smaller than _B(_A is earlier than _B)
+    function isEarly(uint _A, uint _B) internal pure returns(bool) {
+        if (_A <= _B) {
             return true;
         } else {
             return false;
