@@ -176,7 +176,8 @@ contract XiHongShiInsurance is Insurance {
         uint256[] memory infer_output = new uint256[](1);
         uint256 overallRisk = 0;
         for(uint i = 0; i < USER_DATA_COUNT; ++i){
-            getUserData(i);
+            // category 1: user data
+            getUserData(_userAddr, 1, i);
             inferArray(_modelHash, inputData, infer_output);
             uint256 riskFactor = infer_output[0];
             uint256 riskIndex = 0;
@@ -198,13 +199,21 @@ contract XiHongShiInsurance is Insurance {
         availableServicesByUser[_userAddr] = availableServices;
     }
     
-    function getUserData(uint _dataCategory) internal {
-        // FIXME: check arguments
-        uint index = 1;
-        (index, inputData) = DataController(
-            dataControllerAddress).accessStatistic(_dataCategory, 
+    function getUserData(address _userAddr, uint _dataCategory, uint8 _index) internal {
+        (index, inputData) = DataController(dataControllerAddress).accessStatistic(
+            _userAddr, 
             address(this), 
-            index
+            _dataCategory, // data category, refer to data contract
+            _index
+        );
+    }
+    
+    function getUserReceipt(address _userAddr, uint _dataCategory, uint8 _index) internal {
+        (index, inputData) = DataController(dataControllerAddress).accessReceipt(
+            _userAddr, 
+            address(this), 
+            _dataCategory, // data category, refer to data contract
+            _index
         );
     }
     
@@ -227,8 +236,8 @@ contract XiHongShiInsurance is Insurance {
     // TODO: implement
     // get data from data contract, used for insurance payment 
     function checkCurrentHealthCondition(address _userAddr) public returns(bool){
-        // 2: hospitial receipt
-        getUserData(2);
+        // 2: hospitial receipt, 0: last recorded receipt
+        getUserReceipt(_userAddr, 2, 0);
         uint256[] memory infer_output = new uint256[](3);
         inferArray(modelAddress, inputData, infer_output);
         uint256 riskFactor = infer_output[0];
