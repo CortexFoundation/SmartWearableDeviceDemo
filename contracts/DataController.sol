@@ -2,6 +2,7 @@ pragma solidity ^0.4.18;
 
 import "./Ownable.sol";
 import "./SafeMath.sol";
+import "./Services.sol";
 
 contract DataController is Ownable {
     using SafeMath for uint256;
@@ -99,11 +100,12 @@ contract DataController is Ownable {
     mapping (address => Institution) private institutionInfo;
 
     constructor() public {
-        numToCategory[1] = "data";  // 00001--data record
-        numToCategory[2] = "hospitalLog";   // 00010--hospital access record
-        numToCategory[4] = "insuranceLog"; // 00100--insurance company access record
-        numToCategory[8] = "hospitalFeedback";  //01000
-        numToCategory[16] = "insuranceFeedback";    //10000
+      // TODO(ljj): can the map be moved into the line 87?
+      numToCategory[1] = "data";  // 00001--data record
+      numToCategory[2] = "medicalLog";   // 00010--hospital access record
+      numToCategory[4] = "insuranceLog"; // 00100--insurance company access record
+      numToCategory[8] = "medicalReceipt";  //01000
+      numToCategory[16] = "insuranceReceipt";    //10000
     }
 
 
@@ -185,6 +187,7 @@ contract DataController is Ownable {
      **/
 
     // grant acess to institution & change permission
+    // TODO(ljj): the -1 indicates all over the all blocks.
     function authorize(
         address _institutionId,  // the adress of institution which is authorized to
         uint _au,   // what kind of permission (eg. 11111 - all the data &log could access)
@@ -216,7 +219,39 @@ contract DataController is Ownable {
     function cacelData() public personExistOnly {
         delete personInfo[msg.sender];
     }
-// --------------------------- Service Interface -------------------------------
+
+    /**
+     * User Service Wrapper API
+     *
+     * This section mainly does the wrapper of API functions in specific
+     *  Service, exposing interface to user.
+     **/
+
+    function getNumberOfServices() public view returns(uint256) {
+      _;
+    }
+
+    function getService(uint8 _serviceIndex)
+        public view returns(string, uint256) {
+      _;
+    }
+
+    function isServiceActive(uint8 _serviceIndex)
+        public view returns(bool) {
+      _;
+    }
+
+    function getAvailableServices()
+        public view returns(uint256) {
+      _;
+    }
+
+    function getActiveServices()
+        public view returns9uint256) {
+      _;
+    }
+
+// ------------------------- Institution Interface -----------------------------
 
 
     function registerInstitution(string _name, string _category) public onlyOwner{
@@ -423,7 +458,7 @@ contract DataController is Ownable {
             return false;
         }
     }
-    function getFeedback(uint8[28*28] _metaData,address _personId) internal {
+    function getReceipt(uint8[28*28] _metaData,address _personId) internal {
         personInfo[_personId].feedbacks.push(_metaData);
     }
     // TODO : the timestamp problem 
