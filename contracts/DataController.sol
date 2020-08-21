@@ -2,6 +2,7 @@ pragma solidity ^0.4.18;
 
 import "./Ownable.sol";
 import "./SafeMath.sol";
+import "./Services.sol";
 
 contract DataController is Ownable {
     using SafeMath for uint256;
@@ -102,9 +103,12 @@ contract DataController is Ownable {
     // Log private logCache;
 
     constructor() public {
+      // TODO(ljj): can the map be moved into the line 87?
         numToCategory[1] = "data";  // 001--data record
         numToCategory[2] = "hospitalLog";   // 010--hospital access record
         numToCategory[4] = "insuranceLog"; // 100--insurance company access record
+        numToCategory[8] = "medicalReceipt";
+        numToCategory[16] = "insuranceReceipt";
     }
 
 
@@ -182,6 +186,7 @@ contract DataController is Ownable {
      **/
 
     // grant acess to institution & change permission
+    // TODO(ljj): the -1 indicates all over the all blocks.
     function authorize(
         address _institutionId,  // the adress of institution which is authorized to
         uint _au,   // what kind of permission (eg. 111 - all the data &log could access)
@@ -211,7 +216,39 @@ contract DataController is Ownable {
     function cacelData() public personExistOnly {
         delete personInfo[msg.sender];
     }
-// --------------------------- Service Interface -------------------------------
+
+    /**
+     * User Service Wrapper API
+     *
+     * This section mainly does the wrapper of API functions in specific
+     *  Service, exposing interface to user.
+     **/
+
+    function getNumberOfServices() public view returns(uint256) {
+      _;
+    }
+
+    function getService(uint8 _serviceIndex)
+        public view returns(string, uint256) {
+      _;
+    }
+
+    function isServiceActive(uint8 _serviceIndex)
+        public view returns(bool) {
+      _;
+    }
+
+    function getAvailableServices()
+        public view returns(uint256) {
+      _;
+    }
+
+    function getActiveServices()
+        public view returns9uint256) {
+      _;
+    }
+
+// ------------------------- Institution Interface -----------------------------
 
 
     function registerInstitution(string _name, string _category) public {

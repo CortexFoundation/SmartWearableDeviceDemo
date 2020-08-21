@@ -64,6 +64,7 @@ contract InsuranceService is GeneralService {
         dataControllerAddress = _newAddr;
     }
     
+    // TODO(wlq): move the `registerInstitution` function into the general service
     function registerInstitution() public moderatorOnly {
         DataController(dataControllerAddress).registerInstitution(
             companyName, 
@@ -152,7 +153,7 @@ contract InsuranceService is GeneralService {
             .authorize(_clientAddr, _categories, 2, 3);
     }
     
-    function getAvaialbleServices(
+    function getAvailbleServices(
         address _userAddr, 
         address _modelHash
     ) 
