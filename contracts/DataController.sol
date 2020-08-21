@@ -9,11 +9,11 @@ contract DataController is Ownable {
 
 // -------------------------- Pre-defined Structure ----------------------------
 
-    // the heath information collect by wristband
-    struct Statistics {
+    // the body feature data collected by smart wristband
+    struct Statistic {
         // time duration of these statistics
         uint256 startTs;    //start timestamp
-        uint256 endTs;      //stop timestamp
+        uint256 stopTs;      //stop timestamp
         /**
        * Encoded Statistics API
        *
@@ -25,21 +25,19 @@ contract DataController is Ownable {
 
     // the data access log of user's data
     struct Log {
-        // the category of institution who access the user data
-        string category;  
-        // when access the data
-        uint256 logTimestamp;   
+        string category;  // the category of institution who access the user data
+        uint256 logTimestamp;   // when access the data
         // the name of the institution who access the information
         string institutionName; 
         // what data has been visited,[001 -- data,010 -- hospitalLog, 100 -- insuranceLog]
         uint cate;  
     }
 
-    // the feedback for service actions
-    struct Feedback {
+    // the receipt for service actions
+    struct Receipt {
       uint256 fbTimestamp; // start timestamp
       /**
-       * Encoded Feedback API
+       * Encoded Receipt API
        *
        * It's an public feedback after performing server, such as the
        *  insurance purchase, claim, ..., etc. We will define the feedback
@@ -62,9 +60,11 @@ contract DataController is Ownable {
         // indicate that if has been register
         bool exist;   
         string name;
-        Data[] datas;
+        Statistic[] datas;
         Log[] hospitalLogs;
         Log[] insuranceLogs;
+        Receipt[] hospitalReceipts;
+        Receipt[] insuranceReceipts;
         // what is allowed to a institution
         mapping(address => License) permissionList; 
     }
@@ -72,8 +72,7 @@ contract DataController is Ownable {
     struct Institution {
         bool exist;
         string name;
-        //now just 2 : hospital and insurance
-        string category;
+        string category;    // now just 2 institution type: hospital and insurance
     }
 
 // --------------------------------- Event -------------------------------------
@@ -87,7 +86,7 @@ contract DataController is Ownable {
     mapping (uint => string) numToCategory;
     uint256 INT_MAX = 2**256 - 1;
     // the number of data & log category,temporarily is 3
-    uint constant NUMCATE = 3;
+    uint constant NUMCATE = 5;
     // time period the number of the block
     uint constant PERIODBLOCK = 5;
     uint period = 5; // block number to time of permission
@@ -104,11 +103,11 @@ contract DataController is Ownable {
 
     constructor() public {
       // TODO(ljj): can the map be moved into the line 87?
-        numToCategory[1] = "data";  // 001--data record
-        numToCategory[2] = "hospitalLog";   // 010--hospital access record
-        numToCategory[4] = "insuranceLog"; // 100--insurance company access record
-        numToCategory[8] = "medicalReceipt";
-        numToCategory[16] = "insuranceReceipt";
+      numToCategory[1] = "data";  // 00001--data record
+      numToCategory[2] = "medicalLog";   // 00010--hospital access record
+      numToCategory[4] = "insuranceLog"; // 00100--insurance company access record
+      numToCategory[8] = "medicalReceipt";  //01000
+      numToCategory[16] = "insuranceReceipt";    //10000
     }
 
 
@@ -170,7 +169,7 @@ contract DataController is Ownable {
     // upload the preliminary data
     function uploadData(address _personId, uint8[28*28] _metaData)
       public personExistOnly onlyOwner {
-        Data storage tmpData;
+        Statistic storage tmpData;
         tmpData.metaData = _metaData;
         tmpData.dataTimestamp = block.timestamp;
         personInfo[_personId].datas.push(tmpData);
@@ -294,7 +293,7 @@ contract DataController is Ownable {
             return(startIndex,endIndex);
         }
         
-    //obtain an index range of log
+    //obtain an available index range of log
     function getLogAvailableIndex(
         address _personId,
         uint _dataCategory  //the category of data want to obtain
@@ -327,6 +326,49 @@ contract DataController is Ownable {
             }
             for(j; j >= i; j--) {
                 if (tmpLogs[j].dataTimestamp >= personInfo[_personId].permissionList[msg.sender].end) {
+                    endIndex = j;
+                    break;
+                }
+            }
+            if(endIndex == 0 && (j != len-1)) {
+                return(0,0);
+            }
+            return(startIndex,endIndex);
+        }
+        
+    //obtain an available index range of feedbacks of people
+    function getAvailableReceiptIndex(
+        address _personId,
+        uint _dataCategory  //the category of data want to obtain
+    ) 
+        public 
+        view 
+        withPermit(_personId,_dataCategory)
+        returns(uint, uint) //(0,0) -- don't get exactly index
+        {
+            uint startIndex = 0;
+            uint endIndex = 0;
+            uint len = getDataNum(_personId,_dataCategory);
+            uint i = 0;
+            uint j = len - 1;
+            Receipt[] storage tmpReceipts;
+            if (_dataCategory == 2) {
+                tmpReceipts = personInfo[_personId].hospitalReceipts;
+            }
+            else if(_dataCategory = 4) {
+                tmpReceipts = personInfo[_personId].insuranceReceipts;
+            }
+            for (i; i < len; i++) {
+                if(tmpReceipts[i].dataTimestamp <= personInfo[_personId].permissionList[msg.sender].start) {
+                    startIndex = i;
+                    break;
+                }
+            }
+            if(startIndex == 0 && i != 0) {
+                return (0,0);
+            }
+            for(j; j >= i; j--) {
+                if (tmpReceipts[j].dataTimestamp >= personInfo[_personId].permissionList[msg.sender].end) {
                     endIndex = j;
                     break;
                 }
@@ -443,7 +485,7 @@ contract DataController is Ownable {
     // record log of  access the  data
     function recordDataAcess(
         uint _dataCategory, //kind of data&log be visited [001,010,100]
-        address _personId,
+        address _personId
     ) 
         internal 
     {
@@ -455,10 +497,12 @@ contract DataController is Ownable {
         tmplog.logTimestamp = block.timestamp;
 
         // TODO(ljj): wrapper the keccak as a function returns string.
-        if (keccak256(abi.encodePacked(tmplog.category)) == keccak256(abi.encodePacked("hospital"))) {
-            personInfo[_personId].hospitalLogs.push(tmplog);
-        }else if (keccak256(abi.encodePacked(tmplog.category)) == keccak256(abi.encodePacked("insurance"))) {
-            personInfo[_personId].insuranceLogs.push(tmplog);
+        if (stringEqual(tmpLog.category,"hospital")) {
+            personInfo[_personId].hospitalLogs.push(tmpLog);
+        } else if (stringEqual(tmpLog.category,"insurance")) {
+            personInfo[_personId].insuranceLogs.push(tmpLog);
+        } else {
+            revert("unknown institution");
         }
     }
     
@@ -501,7 +545,17 @@ contract DataController is Ownable {
             revert("get the wrong dataCategory");
         }
     }
-
+    
+    function stringEqual(string a, string b) internal pure returns(bool) {
+        if(keccak256(abi.encodePacked(a)) == keccak256(abi.encodePacked(b))) {
+            return true;
+        }else {
+            return false;
+        }
+    }
+    function getReceipt(uint8[28*28] _metaData,address _personId) internal {
+        personInfo[_personId].feedbacks.push(_metaData);
+    }
     // TODO : the timestamp problem 
     // function logArrange(uint dataCategory) internal
 
