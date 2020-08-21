@@ -1,8 +1,10 @@
 pragma solidity ^0.4.24;
 // pragma experimental ABIEncoderV2;
 
+import "./Ownable.sol"
+
 // last implemented contract: 0x70ae5b30c81d00cc4b6cbe765a71ab89e35d2cc4
-contract Institution {
+contract Institution is Ownable {
     
 // ---------------------------- Company Information ------------------------------
 
@@ -72,12 +74,7 @@ contract Institution {
 
 contract Insurance is Institution {
 
-    modifier moderatorOnly() {
-        require(msg.sender == moderator, "Moderator Only");
-        _;
-    }
-
 // -------------------------- Warranty Service ---------------------------------
 
-    function payment(address _userAddr) public moderatorOnly;
+    function payment(address _userAddr) public onlyOwner;
 }
