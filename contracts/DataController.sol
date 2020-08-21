@@ -31,7 +31,7 @@ contract DataController is Ownable {
         string institutionName;
         // what data has been visited
         //eg.00001-Statistic,00010--hospitalLog, 00100--insuranceLog,01000--hospitalReceipt,10000--insuranceReceipt
-        uint32 cate;
+        uint256 cate;
     }
 
     // the feedback for service actions
@@ -116,37 +116,6 @@ contract DataController is Ownable {
         _;
     }
     
-    // test if the _category is allowed to access
-    modifier withPermitStatistic(address _personAddr, address _instituionId) {
-        License storage tmpLicense = personInfo[_prsonId].licenseList[_institutionId];
-        require(((tmpLicense >> 0) &1) == 1,"not allowed to access the statistics");
-        _;
-    }
-    
-    modifier withPermitHospitalLog(address _personAddr, address _institutionId) {
-         License storage tmpLicense = personInfo[_prsonId].licenseList[_institutionId];
-         require(((tmpLicense >> 1) &1) == 1,"not allowed to access the hospitalLog");
-         _;
-    }
-    
-    modifier withPermitInsuranceLog(address _personAddr, address _institutionId) {
-         License storage tmpLicense = personInfo[_prsonId].licenseList[_institutionId];
-         require(((tmpLicense >> 2) &1) == 1,"not allowed to access the insuranceLog");
-         _;
-    }
-    
-    modifier withPermithospitalReceipt(address _personAddr, address _institutionId) {
-         License storage tmpLicense = personInfo[_prsonId].licenseList[_institutionId];
-         require(((tmpLicense >> 3) &1) == 1,"not allowed to access the hospitalReceipt");
-         _;
-    }
-    
-    modifier withPermitInsuranceReceipt(address _personAddr, address _institutionId) {
-         License storage tmpLicense = personInfo[_prsonId].licenseList[_institutionId];
-         require(((tmpLicense >> 4) &1) == 1,"not allowed to access the InsuranceReceipt");
-         _;
-    }
-    
     //if the permission is effient
     modifier withPermitTime(address _personAddr, uint _dataCategory) {
         require(personInfo[_personAddr].exist, "personal not exist");
@@ -158,11 +127,13 @@ contract DataController is Ownable {
 
 
         for (int i = 0; i < 5; ++i) {
-          mask = 1 << i;
+          uint32 mask = uint32(1) << i;
           if ((_dataCategory & mask) == mask) {
             require((tmpLicense.permission & mask) == mask, "check data");
           }
         }
+
+        _;
     }
     
     /**
@@ -205,14 +176,15 @@ contract DataController is Ownable {
     }
     
     // upload the preliminary data
-    function uploadData(address _personAddr, uint[25] _metaData)
-        public
-        personExistOnly
+    function uploadData(
+        address _personAddr, 
+        uint[25] _metaData, 
+        uint256 _startBlk, 
+        uint256 _stopBlk) public
+        personExistOnly(_personAddr)
     {
-        Statistic storage tmpStatistic;
-        tmpStatistic.encodedData = _metaData;
-        tmpStatistic.startTs = block.number;
-        tmpStatistic.stopTs = block.number;
+        Statistic memory tmpStatistic = Statistic(
+            _startBlk, _stopBlk, _metaData);
         personInfo[_personAddr].statistics.push(tmpStatistic);
     }
 
@@ -231,7 +203,7 @@ contract DataController is Ownable {
         uint _au   // what kind of permission (eg. 11111 - all the data &log could access)
     )
         public
-        personExistOnly 
+        personExistOnly(msg.sender)
     {
         License storage tmpLicense = personInfo[msg.sender].licenseList[_institutionId];
         tmpLicense.existTime = block.number;
@@ -240,13 +212,13 @@ contract DataController is Ownable {
 
     // user cacel the permission of the data access manually.
     function userDeauthorization(address _institutionId)
-        public personExistOnly
+        public personExistOnly(msg.sender)
     {
         deauthorize(_institutionId,0); // 00000 cacel all the data permission
     }
     
     // user delete his own account
-    function cacelData() public personExistOnly onlyOwner {
+    function deleteData() public personExistOnly(msg.sender) onlyOwner {
         delete personInfo[msg.sender];
     }
 
@@ -266,7 +238,7 @@ contract DataController is Ownable {
     function getInstitution(uint256 _institutionIndex)
         public view returns(address)
     {
-      return institutionAddresses[_institutionIndex]
+      return institutionAddresses[_institutionIndex];
     }
 
 // ------------------------- Institution Interface -----------------------------
@@ -359,7 +331,7 @@ contract DataController is Ownable {
         returns(uint256[25])
     {
         //TODO: index access right control
-        Receipt[] storage tmpReceipts;
+        Receipt[] memory tmpReceipts;
         uint len;
 
         if (institutionInfo[msg.sender].category == 0) {
@@ -393,21 +365,18 @@ contract DataController is Ownable {
     }
     // record log of  access the  data
     function recordDataAcess(
-        uint _dataCategory, //kind of data&log be visited
-        address _personAddr
-    ) 
-        internal 
+        uint256 _dataCategory, //kind of data&log be visited
+        address _personAddr) internal 
     {
-        require(personInfo[_personAddr].exist == true, "don't exist");
-        Log storage tmpLog;
+        Log memory tmpLog;
         tmpLog.cate = _dataCategory;
-        string storage insuranceCategory = institutionInfo[msg.sender].category;
         tmpLog.institutionName = institutionInfo[msg.sender].name;
         tmpLog.logTimestamp = block.number;
 
-        if (stringEqual(insuranceCategory,"hospital")) {
+        uint256 insuranceCategory = institutionInfo[msg.sender].category;
+        if (insuranceCategory == 0) {
             personInfo[_personAddr].hospitalLogs.push(tmpLog);
-        } else if (stringEqual(insuranceCategory,"insurance")) {
+        } else if (insuranceCategory == 1) {
             personInfo[_personAddr].insuranceLogs.push(tmpLog);
         } else {
             revert("unknown institution");
@@ -427,3 +396,5 @@ contract DataController is Ownable {
     // TODO : the timestamp problem 
     // function logArrange(uint dataCategory) internal
 }
+
+

@@ -57,7 +57,7 @@ contract Institution is Ownable {
           uint256, // service fee
           string, // service description
           string // service notes
-        )
+        );
 
 // --------------------------- Personal Services ------------------------------
 
@@ -117,3 +117,4 @@ contract Insurance is Institution {
 
     function payment(address _userAddr) public;
 }
+
