@@ -152,7 +152,7 @@ contract XiHongShiInsurance is Insurance {
             .authorize(_clientAddr, _categories, 2, 3);
     }
     
-    function getAvailbleServices(
+    function getAvailableServices(
         address _userAddr, 
         address _modelHash
     ) 

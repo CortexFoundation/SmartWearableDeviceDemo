@@ -36,6 +36,16 @@ contract Institution is Ownable {
     function getService(uint8 _serviceIndex)
         public view returns(string, uint256);
 
+    // More details information about service, such as
+    //  the insurance acknowledge, scheme, ... etc.
+    function getServiceInformation(uint8 _serviceIndex)
+        public view returns(
+          string, // service name
+          uint256, // service fee
+          string, // service description
+          string // service notes
+        )
+
 // --------------------------- Personal Services ------------------------------
 
     /**
@@ -60,7 +70,7 @@ contract Institution is Ownable {
     }
     
     // all the available services that user can choose
-    function getAvailbleServices()
+    function getAvailableServices()
         public view returns(uint256)
     {
         return availableServicesByUser[msg.sender];

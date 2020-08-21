@@ -35,15 +35,15 @@ contract DataController is Ownable {
 
     // the receipt for service actions
     struct Receipt {
-      uint256 fbTimestamp; // start timestamp
-      /**
-       * Encoded Receipt API
-       *
-       * It's an public feedback after performing server, such as the
-       *  insurance purchase, claim, ..., etc. We will define the feedback
-       *  data encoder via communicating with all the service suppliers.
-       **/
-      uint8[28*28] encodedData; // the encoded feedback for service
+        uint256 fbTimestamp; // start timestamp
+        /**
+         * Encoded Receipt API
+         *
+         * It's an public feedback after performing server, such as the
+         *  insurance purchase, claim, ..., etc. We will define the feedback
+         *  data encoder via communicating with all the service suppliers.
+         **/
+        uint8[28*28] encodedData; // the encoded feedback for service
     }
     
     struct License {
