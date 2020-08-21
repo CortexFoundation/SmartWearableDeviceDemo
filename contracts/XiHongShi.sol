@@ -1,6 +1,6 @@
 pragma solidity ^0.4.24;
 
-import "./Service.sol";
+import "./Institution.sol";
 import "./SafeMath.sol";
 import "./DataController.sol";
 
@@ -17,6 +17,8 @@ contract XiHongShiInsurance is Insurance {
     // other companies might have different structures
     struct Service{
         string name;
+        string statement;
+        string notes;
         uint256 riskThreshold;
         uint256 fee;
         uint256 payment;
@@ -29,9 +31,30 @@ contract XiHongShiInsurance is Insurance {
     constructor() public payable {
         companyName = "XiHongShi Insurance";
         inputData = new uint256[](((28 * 28) + 31) >> 5 );
-        services.push(Service("1", 5, 1, 10));
-        services.push(Service("2", 7, 2, 20));
-        services.push(Service("3", 15, 3, 30));
+        services.push(
+            Service(
+                "Happiness", 
+                "Cover some daily activities.",
+                "For older people",
+                5, 1, 10
+            )
+        );
+        services.push(
+            Service(
+                "Hardworking",  
+                "Cover most daily activities.",
+                "For mid age people", 
+                7, 2, 20
+            )
+        );
+        services.push(
+            Service(
+                "Excitement",  
+                "Cover extreme activities.",
+                "For younger people", 
+                15, 3, 30
+            )
+        );
     }
     
     // --- moderator functions --- 
@@ -65,14 +88,16 @@ contract XiHongShiInsurance is Insurance {
     
     function addService(
         string _name, 
+        string _statement,
+        string _notes,
         uint256 _riskThreshold, 
-        uint256 _fee, 
+        uint256 _fee,
         uint256 _payment
     ) 
         public 
         onlyOwner 
     {
-        services.push(Service(_name, _riskThreshold, _fee, _payment));
+        services.push(Service(_name, _statement, _notes, _riskThreshold, _fee, _payment));
     }
     
     function updateService(
@@ -122,6 +147,23 @@ contract XiHongShiInsurance is Insurance {
         return false;
     }
     
+    function getServiceInformation(uint8 _serviceIndex)
+        public 
+        view 
+        returns(
+            string, // service name
+            uint256, // service fee
+            string, // service description
+            string // service notes
+        )
+    {
+        return (
+            services[_serviceIndex].name, 
+            services[_serviceIndex].fee,
+            services[_serviceIndex].statement,
+            services[_serviceIndex].notes
+        );
+    }
     
     // --- service AI inferences --- 
     function checkForAvailbleServices(
@@ -160,7 +202,7 @@ contract XiHongShiInsurance is Insurance {
         // FIXME: check arguments
         uint index = 1;
         (index, inputData) = DataController(
-            dataControllerAddress).accessData(_dataCategory, 
+            dataControllerAddress).accessStatistic(_dataCategory, 
             address(this), 
             index
         );
@@ -185,6 +227,21 @@ contract XiHongShiInsurance is Insurance {
     // TODO: implement
     // get data from data contract, used for insurance payment 
     function checkCurrentHealthCondition(address _userAddr) public returns(bool){
-        return true;
+        // 2: hospitial receipt
+        getUserData(2);
+        uint256[] memory infer_output = new uint256[](3);
+        inferArray(modelAddress, inputData, infer_output);
+        uint256 riskFactor = infer_output[0];
+        uint256 riskIndex = 0;
+        for(uint i = 1; i < RISK_LEVEL_COUNT; ++i){
+            if(infer_output[i] > riskFactor){
+                riskFactor = infer_output[i];
+                riskIndex = i;
+            }
+        }
+        if(riskIndex == 0){
+            return true;
+        }
+        return false;
     }
 }

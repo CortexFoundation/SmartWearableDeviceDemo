@@ -2,7 +2,7 @@ pragma solidity ^0.4.18;
 
 import "./Ownable.sol";
 import "./SafeMath.sol";
-import "./Services.sol";
+import "./Institution.sol";
 
 contract DataController is Ownable {
     using SafeMath for uint256;
@@ -94,6 +94,7 @@ contract DataController is Ownable {
     // all the data about people
     mapping (address => Person) private personInfo;
     // all the data about institution
+    address[] institutionAddresses;
     mapping (address => Institution) private institutionInfo;
 
     constructor() public {
@@ -198,7 +199,6 @@ contract DataController is Ownable {
     function uploadData(address _personId, uint[25] _metaData)
         public
         personExistOnly
-        onlyOwner 
     {
         Statistic storage tmpStatistic;
         tmpStatistic.encodedData = _metaData;
@@ -217,7 +217,7 @@ contract DataController is Ownable {
      **/
 
     // grant acess to institution & change permission
-    function authorize(
+    function userAuthorization(
         address _institutionId,  // the adress of institution which is authorized to
         uint _au   // what kind of permission (eg. 11111 - all the data &log could access)
     )
@@ -229,13 +229,15 @@ contract DataController is Ownable {
         tmpLicense.permission = _au;
     }
 
-    // user cacel the permission of all the category data access
-    function personDeauthorize(address _institutionId) public personExistOnly {
+    // user cacel the permission of the data access manually.
+    function userDeauthorization(address _institutionId)
+        public personExistOnly
+    {
         deauthorize(_institutionId,0); // 00000 cacel all the data permission
     }
     
-    // user cacel his own account
-    function cacelData() public personExistOnly {
+    // user delete his own account
+    function cacelData() public personExistOnly onlyOwner {
         delete personInfo[msg.sender];
     }
 
@@ -246,39 +248,29 @@ contract DataController is Ownable {
      *  Service, exposing interface to user.
      **/
 
-    // function getNumberOfServices() public view returns(uint256) {
-        
-    //   _;
-    // }
+    function getNumberOfInstitutions()
+        public view returns(uint256)
+    {
+      return institutionAddresses.length;
+    }
 
-    // function getService(uint8 _serviceIndex)
-    //     public view returns(string, uint256) {
-    //   _;
-    // }
-
-    // function isServiceActive(uint8 _serviceIndex)
-    //     public view returns(bool) {
-    //   _;
-    // }
-
-    // function getAvailableServices()
-    //     public view returns(uint256) {
-    //   _;
-    // }
-
-    // function getActiveServices()
-    //     public view returns(uint256) {
-    //   _;
-    // }
+    function getInstitution(uint256 _institutionIndex)
+        public view returns(address)
+    {
+      return institutionAddresses[_institutionIndex]
+    }
 
 // ------------------------- Institution Interface -----------------------------
 
 
-    function registerInstitution(string _name, string _category) public onlyOwner{
+    function registerInstitution(string _name, string _category) 
+        public onlyOwner
+    {
         Institution storage i = institutionInfo[msg.sender];
         i.exist = true;
         i.name = _name;
         i.category = _category;
+        institutionAddresses.push(msg.sender);
     }
     
     // get the body feature statistics.
