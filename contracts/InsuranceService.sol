@@ -6,7 +6,9 @@ import "./DataController.sol";
 
 contract XiHongShiInsurance is Insurance {
     using SafeMath for uint;
-
+    
+    address public modelAddress = 0xfc1488AaCB44f7E94C7FcC19E7684219673902AB;
+    
     uint8 public USER_DATA_COUNT = 10;
     // 0: low risk, 1: medium risk, 2: high risk
     uint8 public RISK_LEVEL_COUNT = 3;
@@ -21,10 +23,12 @@ contract XiHongShiInsurance is Insurance {
     }
     
     Service[] services;
+        
     uint256[] public inputData;
     
     constructor() public payable {
         companyName = "XiHongShi Insurance";
+        inputData = new uint256[](((28 * 28) + 31) >> 5 );
         services.push(Service("1", 5, 1, 10));
         services.push(Service("2", 7, 2, 20));
         services.push(Service("3", 15, 3, 30));
@@ -180,5 +184,7 @@ contract XiHongShiInsurance is Insurance {
     
     // TODO: implement
     // get data from data contract, used for insurance payment 
-    function checkCurrentHealthCondition(address _userAddr) public returns(bool);
+    function checkCurrentHealthCondition(address _userAddr) public returns(bool){
+        return true;
+    }
 }

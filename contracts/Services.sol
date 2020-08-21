@@ -32,7 +32,7 @@ contract Institution is Ownable {
      *    The authorization levels of necessary data access for all
      *    the services in this company.
      **/
-    function authRequest() public returns(uint);
+    // function authRequest() public returns(uint);
 
     // All the provided services of company.
     // Maximum list length : 256
