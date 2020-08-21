@@ -270,7 +270,7 @@ contract DataController is Ownable {
     public
     view
     withPermit(_personId,_dataCategory)
-    returns(uint, uint)
+    returns(int, int)
     {
         if (_dataCategory == 1) {
             return getAvailableStatisticIndex(_personId,msg.sender,_dataCategory);
@@ -286,39 +286,57 @@ contract DataController is Ownable {
         }
     }
     
-    // get the body feature statistics.
-    // if have the permit of data &access success,first return data index(>0) & the metadata
-    // or not be allowed to get the time duration data return 0
     function accessData(
-        uint _dataCategory,
         address _personId,
+        address _institutionId,
+        uint _dataCategory,
         uint _index
     ) 
         public 
         view 
         withPermit(_personId,_dataCategory)
-        returns(uint, uint8[28*28])
+        returns(uint, uint[25])
     {
         require(personInfo[_personId].exist == true, "people don't exist");
-        Statistic tmpData = personInfo[_personId].datas[_index];
-        string memory c = numToCategory[_dataCategory];
-        License storage tmpLicense = personInfo[_personId].permissionList[msg.sender];
-        if(timeFilter(tmpData.dataTimestamp,tmpLicense.start,tmpLicense.end)) {
-            recordDataAcess(1,_personId); // 001 -- data
-            return (_index,tmpData.metaData);
-        } else {
-            return (0,[]);
+        if (_dataCategory == 1) {
+            return accessStatistic(_personId,_institutionId,_index);
         }
+        else if (_dataCategory == 2 || _dataCategory == 4) {
+            return accessLog(_personId,_institutionId,_index);
+        } 
+        else if (_dataCategory == 8 || _dataCategory == 16) {
+            return accessReceipt(_personId,_institutionId,_index);
+        }
+    }
+    
+    // get the body feature statistics.
+    // if have the permit of data &access success,first return data index(>0) & the metadata
+    // or not be allowed to get the time duration data return 0
+    function accessStatistic(
+        address _personId,
+        address _institutionId,
+        uint _index
+    ) 
+        internal 
+        view 
+        returns(uint, uint[25])
+    {
+        require(personInfo[_personId].exist == true, "people don't exist");
+        Statistic tmpStatistic = personInfo[_personId].statistics[_index];
+        string memory c = numToCategory[_dataCategory];
+        License storage tmpLicense = personInfo[_personId].licenseList[_institutionId];
+        recordDataAcess(1,_personId);
+        return (_index,tmpStatistic)
     }
 
     // get the log
     // if access success,first return index(>0),or return 0
-    function accessHospitalLog(
-        uint _dataCategory, 
-        address _personId, 
+    function accessLog(
+        address _personId,
+        address _institutionId,
         uint _index
     ) 
-        public 
+        internal 
         view 
         withPermit(_personId,_dataCategory) 
         returns(
@@ -327,38 +345,48 @@ contract DataController is Ownable {
             uint
         )
     {
+        //TODO: index access right control
         require(personInfo[_personId].exist == true, "don't exist");
-        recordDataAcess(2,_personId); // 010 -- hospital
-        Log tmpLog = personInfo[_personId].hospitalLogs[_index];
-        string memory c = numToCategory[_dataCategory];
-        License storage tmpLicense = personInfo[_personId].permissionList[msg.sender];
-        if(timeFilter(tmpLog.logTimestamp,tmpLicense.start,tmpLicense.end)) {
-            return (_index, tmpLog.institutionName, tmpLog.cate);
-        } else {
-            return (0, tmpLog.institutionName, tmpLog.cate);
+        
+        if(stringEqual(institutionInfo[_institutionId].category,"hospital") {
+            recordDataAcess(2,_personId);
+            Log tmpLog = personInfo[_personId].hospitalLogs[_index];
         }
+        else{
+            recordDataAcess(4,_personId);
+            Log tmpLog = personInfo[_personId].insuranceLogs[_index];
+        }
+        
+        License storage tmpLicense = personInfo[_personId].licenseList[_institutionId];
+        return (_index, tmpLog.institutionName, tmpLog.cate)
     }
     
-    function accessInsuranceLog(
-        uint _dataCategory,
-        address _peopleAddress, 
+    // get the log
+    // if access success,first return index(>0),or return 0
+    function accessReceipt(
+        address _personId,
+        address _institutionId,
         uint _index
     ) 
-        public 
+        internal 
         view 
-        withPermit(_peopleAddress,_dataCategory) 
-        returns(uint,string,uint)
+        withPermit(_personId,_dataCategory) 
+        returns(uint, uint[25])
     {
-        require(personInfo[_peopleAddress].exist == true, "don't exist");
-        recordDataAcess(4,_peopleAddress); //100 -- insurance
-        Log tlog = personInfo[_peopleAddress].insuranceLogs[_index];
-        string memory c = numToCategory[_dataCategory];
-        License storage tlicense = personInfo[_peopleAddress].permission[msg.sender][c];
-        if(timeFilter(tlog.logTimestamp,tlicense.start,tlicense.end)) {
-            return (_index, tlog.institutionName, tlog.cate);
-        } else {
-            return (0, tlog.institutionName, tlog.cate);
+        //TODO: index access right control
+        require(personInfo[_personId].exist == true, "don't exist");
+        Receipt tmpReceipt;
+        if(stringEqual(institutionInfo[_institutionId].category,"hospital") {
+            recordDataAcess(8,_personId);
+            tmpReceipt= personInfo[_personId].hospitalReceipts[_index];
         }
+        else{
+            recordDataAcess(16,_personId);
+            tmpReceipt= personInfo[_personId].insurancereceipts[_index];
+        }
+        
+        License storage tmpLicense = personInfo[_personId].licenseList[_institutionId];
+        return (_index, tmpReceipt.encodedData);
     }
 
     // // every insurance service has its own contract address
@@ -391,7 +419,7 @@ contract DataController is Ownable {
     }
     // record log of  access the  data
     function recordDataAcess(
-        uint _dataCategory, //kind of data&log be visited [001,010,100]
+        uint _dataCategory, //kind of data&log be visited
         address _personId
     ) 
         internal 
