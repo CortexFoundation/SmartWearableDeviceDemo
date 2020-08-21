@@ -167,7 +167,6 @@ contract DataController is Ownable {
     function uploadData(address _personId, uint[25] _metaData)
         public
         personExistOnly
-        onlyOwner 
     {
         Statistic storage tmpStatistic;
         tmpStatistic.encodedData = _metaData;
@@ -186,7 +185,7 @@ contract DataController is Ownable {
      **/
 
     // grant acess to institution & change permission
-    function authorize(
+    function userAuthorization(
         address _institutionId,  // the adress of institution which is authorized to
         uint _au   // what kind of permission (eg. 11111 - all the data &log could access)
     )
@@ -198,13 +197,15 @@ contract DataController is Ownable {
         tmpLicense.permission = _au;
     }
 
-    // user cacel the permission of all the category data access
-    function personDeauthorize(address _institutionId) public personExistOnly {
+    // user cacel the permission of the data access manually.
+    function userDeauthorization(address _institutionId)
+        public personExistOnly
+    {
         deauthorize(_institutionId,0); // 00000 cacel all the data permission
     }
     
-    // user cacel his own account
-    function cacelData() public personExistOnly {
+    // user delete his own account
+    function cacelData() public personExistOnly onlyOwner {
         delete personInfo[msg.sender];
     }
 
