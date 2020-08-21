@@ -26,7 +26,7 @@ contract DataController is Ownable {
     // the data access log of user's data
     struct Log {
         //string category;  // the category of institution who access the user data
-        uint256 logTimestamp;   // when access the data
+        uint logTimestamp;   // when access the data
         // the name of the institution who access the information
         string institutionName;
         // what data has been visited
@@ -36,7 +36,7 @@ contract DataController is Ownable {
 
     // the feedback for service actions
     struct Receipt {
-      uint256 receiptTimestamp;
+      uint receiptTimestamp;
       /**
        * Encoded Receipt API
        *
@@ -50,11 +50,8 @@ contract DataController is Ownable {
     struct License {
         // when get the license (using blkNumber)
         uint existTime;
-        // time period of data that can be accessed,[start,end]
-        int start;
-        int end;
         //show what kind of data access is allowed.
-        mapping (uint => bool) permission;
+        uint permission;
     }
 
     struct Person {
@@ -119,7 +116,7 @@ contract DataController is Ownable {
     }
     // test if the _category is allowed by the people 
     modifier withPermit(address _personId,uint _permissionCategory) {
-        License storage tmpLicense = personInfo[_personId].permissionList[msg.sender];
+        License storage tmpLicense = personInfo[_personId].licenseList[msg.sender];
         // One authorization only takes effect within 5 blocks
         require(tmpLicense.existTime.add(PERIODBLOCK) < block.number,
           "is not allowed to accesss the data now!");
@@ -173,8 +170,9 @@ contract DataController is Ownable {
     {
         Statistic storage tmpStatistic;
         tmpStatistic.encodedData = _metaData;
-        tmpStatistic.dataTimestamp = block.timestamp;
-        personInfo[_personId].datas.push(tmpStatistic);
+        tmpStatistic.startTs = block.timestamp;
+        tmpStatistic.stopTs = block.timestamp;
+        personInfo[_personId].statistics.push(tmpStatistic);
     }
 
     /**
@@ -187,28 +185,16 @@ contract DataController is Ownable {
      **/
 
     // grant acess to institution & change permission
-    // _start = -1 --start at the first element
-    //_stop = -1 -- stop at the newest element
     function authorize(
         address _institutionId,  // the adress of institution which is authorized to
-        uint _au,   // what kind of permission (eg. 11111 - all the data &log could access)
-        int _start, // the start of time period that data can be access
-        int _stop   // the end of time period that data can be access
-        )
+        uint _au   // what kind of permission (eg. 11111 - all the data &log could access)
+    )
         public
         personExistOnly 
     {
-        for (uint i = 0; i < NUMCATE; i.add(1)) {
-            if((_au>>i) & 1 == 1) {
-                //string storage category = numToCategory[1 << i];
-                uint tmp = 1 << i;
-                License storage tmpLicense = personInfo[msg.sender].licenseList[_institutionId];
-                tmpLicense.existTime = block.number;
-                tmpLicense.start = _start;
-                tmpLicense.end = _stop;
-                tmpLicense.permission[tmp] = true;
-            }
-        }
+        License storage tmpLicense = personInfo[msg.sender].licenseList[_institutionId];
+        tmpLicense.existTime = block.number;
+        tmpLicense.permission = _au;
     }
 
     // user cacel the permission of all the category data access
@@ -261,32 +247,11 @@ contract DataController is Ownable {
         i.name = _name;
         i.category = _category;
     }
-
-    //obtain an index range of data want to get
-    function getAvailableIndexRange(
-        address _personId,
-        uint _dataCategory
-    )
-    public
-    view
-    withPermit(_personId,_dataCategory)
-    returns(int, int)
-    {
-        if (_dataCategory == 1) {
-            return getAvailableStatisticIndex(_personId,msg.sender,_dataCategory);
-        } 
-        else if (_dataCategory == 2 || _dataCategory == 4) {
-            return getAvailableLogIndex(_personId,msg.sender,_dataCategory);
-        } 
-        else if(_dataCategory == 8 || _dataCategory == 16) {
-            return getAvailableReceiptIndex(_personId,msg.sender,_dataCategory);
-        }
-        else {
-            revert("get the wrong _dataCategory code");
-        }
-    }
     
-    function accessData(
+    // get the body feature statistics.
+    // if have the permit of data &access success,first return data index(>0) & the metadata
+    // or not be allowed to get the time duration data return 0
+    function accessStatistic(
         address _personId,
         address _institutionId,
         uint _dataCategory,
@@ -298,35 +263,9 @@ contract DataController is Ownable {
         returns(uint, uint[25])
     {
         require(personInfo[_personId].exist == true, "people don't exist");
-        if (_dataCategory == 1) {
-            return accessStatistic(_personId,_institutionId,_index);
-        }
-        else if (_dataCategory == 2 || _dataCategory == 4) {
-            return accessLog(_personId,_institutionId,_index);
-        } 
-        else if (_dataCategory == 8 || _dataCategory == 16) {
-            return accessReceipt(_personId,_institutionId,_index);
-        }
-    }
-    
-    // get the body feature statistics.
-    // if have the permit of data &access success,first return data index(>0) & the metadata
-    // or not be allowed to get the time duration data return 0
-    function accessStatistic(
-        address _personId,
-        address _institutionId,
-        uint _index
-    ) 
-        internal 
-        view 
-        returns(uint, uint[25])
-    {
-        require(personInfo[_personId].exist == true, "people don't exist");
-        Statistic tmpStatistic = personInfo[_personId].statistics[_index];
-        string memory c = numToCategory[_dataCategory];
-        License storage tmpLicense = personInfo[_personId].licenseList[_institutionId];
-        recordDataAcess(1,_personId);
-        return (_index,tmpStatistic)
+        Statistic[] tmpStatistics = personInfo[_personId].statistics;
+        uint len = tmpStatistics.length;
+        return (_index,tmpStatistics[len-1-_index].encodedData);
     }
 
     // get the log
@@ -334,9 +273,10 @@ contract DataController is Ownable {
     function accessLog(
         address _personId,
         address _institutionId,
+        uint _dataCategory,
         uint _index
     ) 
-        internal 
+        public 
         view 
         withPermit(_personId,_dataCategory) 
         returns(
@@ -347,18 +287,19 @@ contract DataController is Ownable {
     {
         //TODO: index access right control
         require(personInfo[_personId].exist == true, "don't exist");
-        
-        if(stringEqual(institutionInfo[_institutionId].category,"hospital") {
+        Log[] tmpLogs;
+        uint len;
+        if(stringEqual(institutionInfo[_institutionId].category,"hospital")) {
             recordDataAcess(2,_personId);
-            Log tmpLog = personInfo[_personId].hospitalLogs[_index];
+            tmpLogs = personInfo[_personId].hospitalLogs;
+            len = tmpLogs.length;
         }
         else{
             recordDataAcess(4,_personId);
-            Log tmpLog = personInfo[_personId].insuranceLogs[_index];
+            tmpLogs = personInfo[_personId].insuranceLogs;
+            len = tmpLogs.length;
         }
-        
-        License storage tmpLicense = personInfo[_personId].licenseList[_institutionId];
-        return (_index, tmpLog.institutionName, tmpLog.cate)
+        return (_index, tmpLogs[len - _index -1].institutionName, tmpLogs[len - _index -1].cate);
     }
     
     // get the log
@@ -366,27 +307,29 @@ contract DataController is Ownable {
     function accessReceipt(
         address _personId,
         address _institutionId,
+        uint _dataCategory,
         uint _index
     ) 
-        internal 
+        public 
         view 
         withPermit(_personId,_dataCategory) 
         returns(uint, uint[25])
     {
         //TODO: index access right control
         require(personInfo[_personId].exist == true, "don't exist");
-        Receipt tmpReceipt;
-        if(stringEqual(institutionInfo[_institutionId].category,"hospital") {
+        Receipt[] tmpReceipts;
+        uint len;
+        if(stringEqual(institutionInfo[_institutionId].category,"hospital")) {
             recordDataAcess(8,_personId);
-            tmpReceipt= personInfo[_personId].hospitalReceipts[_index];
+            tmpReceipts= personInfo[_personId].hospitalReceipts;
+            len = tmpReceipts.length;
         }
         else{
             recordDataAcess(16,_personId);
-            tmpReceipt= personInfo[_personId].insurancereceipts[_index];
+            tmpReceipts= personInfo[_personId].insuranceReceipts;
+            len = tmpReceipts.length;
         }
-        
-        License storage tmpLicense = personInfo[_personId].licenseList[_institutionId];
-        return (_index, tmpReceipt.encodedData);
+        return (_index, tmpReceipts[len-1-_index].encodedData);
     }
 
     // // every insurance service has its own contract address
@@ -408,14 +351,8 @@ contract DataController is Ownable {
 
     // cancel the permission of data access for institution
     function deauthorize(address _institutionId, uint au) internal {
-        for (uint i = 0; i < NUMCATE; i.add(1)) {
-            if(((au>>i) & 1) == 0) {
-                string category = numToCategory[1 << i];
-                License storage tmpLicense = personInfo[msg.sender].permissionList[_institutionId];
-                //set existTime+5 will be bigger than any block.number
-                tmpLicense.existTime = INT_MAX.sub(PERIODBLOCK);
-            }
-        }
+        License storage tmpLicense = personInfo[msg.sender].licenseList[_institutionId];
+        tmpLicense.existTime = INT_MAX.sub(PERIODBLOCK);
     }
     // record log of  access the  data
     function recordDataAcess(
@@ -427,58 +364,19 @@ contract DataController is Ownable {
         require(personInfo[_personId].exist == true, "don't exist");
         Log storage tmpLog;
         tmpLog.cate = _dataCategory;
-        tmpLog.category = institutionInfo[msg.sender].category;
+        string insuranceCategory = institutionInfo[msg.sender].category;
         tmpLog.institutionName = institutionInfo[msg.sender].name;
         tmpLog.logTimestamp = block.timestamp;
 
-        if (stringEqual(tmpLog.category,"hospital")) {
+        if (stringEqual(insuranceCategory,"hospital")) {
             personInfo[_personId].hospitalLogs.push(tmpLog);
-        } else if (stringEqual(tmpLog.category,"insurance")) {
+        } else if (stringEqual(insuranceCategory,"insurance")) {
             personInfo[_personId].insuranceLogs.push(tmpLog);
         } else {
             revert("unknown institution");
         }
     }
-    
-    function timeFilter(
-        uint _tmpTime,
-        uint _start,
-        uint _end
-    ) 
-    internal 
-    pure 
-    returns(bool) 
-    {
-        if(_tmpTime < _start || _tmpTime > _end) {
-            return false;
-        } else {
-            return true;
-        }
-    }
 
-    // // get the number of data struct
-    // function getDataNum(
-    //     uint _dataCategory, // type of data&log wan to access[only use 001,010,100]
-    //     address _personId   
-    // ) 
-    //     internal 
-    //     view
-    //     returns(uint)
-    // {
-    //     if(_dataCategory == 1) {
-    //         return personInfo[_personId].datas.length;
-    //     } 
-    //     else if(_dataCategory == 2) {
-    //         return personInfo[_personId].hospitalLogs.length;
-    //     } 
-    //     else if(_dataCategory == 4) {
-    //         return personInfo[_personId].insuranceLogs.length;
-    //     } 
-    //     else {
-    //         revert("get the wrong dataCategory");
-    //     }
-    // }
-    
     function stringEqual(string a, string b) internal pure returns(bool) {
         if(keccak256(abi.encodePacked(a)) == keccak256(abi.encodePacked(b))) {
             return true;
@@ -486,201 +384,9 @@ contract DataController is Ownable {
             return false;
         }
     }
-    function getReceipt(uint8[28*28] _metaData,address _personId) internal {
-        personInfo[_personId].feedbacks.push(_metaData);
-    }
+    // function getReceipt(uint8[28*28] _metaData,address _personId) internal {
+    //     personInfo[_personId].feedbacks.push(_metaData);
+    // }
     // TODO : the timestamp problem 
     // function logArrange(uint dataCategory) internal
-    
-    function getAvailableStatisticIndex(
-        address _personId, 
-        address _institutionId, // who want to get the index
-        uint _dataCategory  // the category of data want to obtain
-    ) 
-        internal 
-        view
-        returns(int, int) // -1 -- don't get exactly index
-    {
-        
-        //the time duration of data can be accessed
-        int beginLiceseTime = personInfo[_personId].liceseList[_institutionId].start;
-        int endLiceseTime = personInfo[_personId].liceseList[_institutionId].end;
-        
-        Statistic[] tmpStatistics = personInfo[_personId].statistics;
-        
-       return (findStartReceiptIndex(beginLiceseTime,tmpStatistics),
-            findStopReceiptIndex(endLiceseTime,tmpStatistics));
-    }
-    
-    function findStartStatisticIndex(int beginLiceseTime,Statistic[] tmpStatistics) internal view returns(int) {
-        //-1 indicate start with first element
-        if (beginLiceseTime == -1) {
-            return 0;
-        }
-        int startIndex = -1;
-        beginLiceseTime = uint(beginLiceseTime);
-        int len = tmpStatistics.length;
-        for (int i = 0; i < len; i++) {
-            uint currentElemTime = tmpStatistics[i].startTs;
-            if(isEarly(beginLiceseTime, currentElemTime)) {
-                startIndex = i;
-                break;
-            }
-        }
-        return startIndex;
-    }
-    
-    function findStopStatisticIndex(int endLiceseTime,Log[] tmpStatistics) internal view returns(int) {
-        int len = tmpStatistics.length;
-        //-1 indicate start with first element
-        if (endLiceseTime == -1) {
-            return len-1;
-        }
-        int stopIndex = -1;
-        uint beginLiceseTime = uint(beginLiceseTime);
-        for (int i = len-1; i > 0; i--) {
-            uint currentElemTime = tmpStatistics[i].stopTs;
-            if(isEarly(currentElemTime,currentElemTime)) {
-                stopIndex = i;
-                break;
-            }
-        }
-        return stopIndex;
-    }
-    
-    
-    function getAvailableLogIndex(
-        address _personId, 
-        address _institutionId, // who want to get the index
-        uint _dataCategory  // the category of data want to obtain
-    ) 
-        internal 
-        view
-        returns(int, int) // -1 -- don't get exactly index
-    {
-        
-        //the time duration of data can be accessed
-        int beginLiceseTime = personInfo[_personId].liceseList[_institutionId].start;
-        int endLiceseTime = personInfo[_personId].liceseList[_institutionId].end;
-        
-        Log[] tmpLogs;
-        if (_dataCategory == 8) {
-            tmpLogs = personInfo[_personId].hospitalLogs;
-        }
-        else {
-            tmpLogs = personInfo[_personId].insuranceLogs;
-        }
-        
-        return (findStartReceiptIndex(beginLiceseTime,tmpLogs),
-            findStopReceiptIndex(endLiceseTime,tmpLogs));
-    }
-    
-    function findStartLogIndex(int beginLiceseTime,Log[] tmpLogs) internal view returns(int) {
-        //-1 indicate start with first element
-        if (beginLiceseTime == -1) {
-            return 0;
-        }
-        int startIndex = -1;
-        beginLiceseTime = uint(beginLiceseTime);
-        int len = tmpLogs.length;
-        for (int i = 0; i < len; i++) {
-            uint currentElemTime = tmpLogs[i].receiptTimestamp;
-            if(isEarly(beginLiceseTime, currentElemTime)) {
-                startIndex = i;
-                break;
-            }
-        }
-        return startIndex;
-    }
-    
-    function findStopLogIndex(int endLiceseTime,Log[] tmpLogs) internal view returns(int) {
-        int len = tmpLogs.length;
-        //-1 indicate start with first element
-        if (endLiceseTime == -1) {
-            return len-1;
-        }
-        int stopIndex = -1;
-        uint beginLiceseTime = uint(beginLiceseTime);
-        for (int i = len-1; i > 0; i--) {
-            uint currentElemTime = tmpLogs[i].receiptTimestamp;
-            if(isEarly(currentElemTime,currentElemTime)) {
-                stopIndex = i;
-                break;
-            }
-        }
-        return stopIndex;
-    }
-        
-    //obtain an available index range of feedbacks of people
-    //inclding hospitalRecipt & insuranceReceipts
-    function getAvailableReceiptIndex(
-        address _personId, 
-        address _institutionId, // who want to get the index
-        uint _dataCategory  // the category of data want to obtain
-    ) 
-        internal 
-        view
-        returns(int, int) // -1 -- don't get exactly index
-    {
-        //the time duration of data can be accessed
-        int beginLiceseTime = personInfo[_personId].liceseList[_institutionId].start;
-        int endLiceseTime = personInfo[_personId].liceseList[_institutionId].end;
-        
-        Receipt[] storage tmpReceipts;
-        if (_dataCategory == 8) {
-            tmpReceipts = personInfo[_personId].hospitalReceipts;
-        }
-        else {
-            tmpReceipts = personInfo[_personId].insuranceReceipts;
-        }
-        
-        return (findStartReceiptIndex(beginLiceseTime,tmpReceipts),
-            findStopReceiptIndex(endLiceseTime,tmpReceipts));
-    }
-    
-    function findStartReceiptIndex(int beginLiceseTime,Receipt[] tmpReceipts) internal view returns(int) {
-        //-1 indicate start with first element
-        if (beginLiceseTime == -1) {
-            return 0;
-        }
-        int startIndex = -1;
-        beginLiceseTime = uint(beginLiceseTime);
-        int len = tmpReceipts.length;
-        for (int i = 0; i < len; i++) {
-            uint currentElemTime = tmpReceipts[i].receiptTimestamp;
-            if(isEarly(beginLiceseTime, currentElemTime)) {
-                startIndex = i;
-                break;
-            }
-        }
-        return startIndex;
-    }
-    
-    function findStopReceiptIndex(int endLiceseTime,Receipt[] tmpReceipts) internal view returns(int) {
-        int len = tmpReceipts.length;
-        //-1 indicate start with first element
-        if (endLiceseTime == -1) {
-            return len-1;
-        }
-        int stopIndex = -1;
-        uint beginLiceseTime = uint(beginLiceseTime);
-        for (int i = len-1; i > 0; i--) {
-            uint currentElemTime = tmpReceipts[i].receiptTimestamp;
-            if(isEarly(currentElemTime,currentElemTime)) {
-                stopIndex = i;
-                break;
-            }
-        }
-        return stopIndex;
-    }
-    
-    
-    //if the timestamp of _A is smaller than _B(_A is earlier than _B)
-    function isEarly(uint _A, uint _B) internal pure returns(bool) {
-        if (_A <= _B) {
-            return true;
-        } else {
-            return false;
-        }
-    }
 }
