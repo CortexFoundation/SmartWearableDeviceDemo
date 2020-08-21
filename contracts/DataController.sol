@@ -24,19 +24,20 @@ contract DataController is Ownable {
 
     // the data access log of user's data
     struct Log {
-        string category;  // the category of institution who access the user data
+        //string category;  // the category of institution who access the user data
         uint256 logTimestamp;   // when access the data
         // the name of the institution who access the information
-        string institutionName; 
-        // what data has been visited,[001 -- data,010 -- hospitalLog, 100 -- insuranceLog]
-        uint cate;  
+        string institutionName;
+        // what data has been visited
+        //eg.00001-Statistic,00010--hospitalLog, 00100--insuranceLog,01000--hospitalReceipt,10000--insuranceReceipt
+        uint cate;
     }
 
     // the feedback for service actions
-    struct Feedback {
-      uint256 fbTimestamp; // start timestamp
+    struct Receipt {
+      uint256 receiptTimestamp;
       /**
-       * Encoded Feedback API
+       * Encoded Receipt API
        *
        * It's an public feedback after performing server, such as the
        *  insurance purchase, claim, ..., etc. We will define the feedback
@@ -52,20 +53,20 @@ contract DataController is Ownable {
         uint start;
         uint end;
         //show what kind of data access is allowed.
-        mapping (string => bool) permission;
+        mapping (uint => bool) permission;
     }
 
     struct Person {
         // indicate that if has been register
         bool exist;   
         string name;
-        Statistic[] datas;
+        Statistic[] statistics;
         Log[] hospitalLogs;
         Log[] insuranceLogs;
-        Feedback[] hospitalFeedbacks;
-        Feedback[] insuranceFeedbacks;
-        // what is allowed to a institution
-        mapping(address => License) permissionList; 
+        Receipt[] hospitalReceipts;
+        Receipt[] insuranceReceipts;
+        // address is the address id of an institution
+        mapping(address => License) licenseList;
     }
 
     struct Institution {
@@ -88,17 +89,14 @@ contract DataController is Ownable {
     uint constant NUMCATE = 5;
     // time period the number of the block
     uint constant PERIODBLOCK = 5;
-    uint period = 5; // block number to time of permission
+    
     // every insurance contract has its own address;
-    mapping (string => address) insuranceAddress;
+    //mapping (string => address) insuranceAddress;
+    
     // all the data about people
     mapping (address => Person) private personInfo;
     // all the data about institution
     mapping (address => Institution) private institutionInfo;
-    
-    // storage the information temporarily
-    // Data private dataCache;
-    // Log private logCache;
 
     constructor() public {
         numToCategory[1] = "data";  // 00001--data record
@@ -118,13 +116,14 @@ contract DataController is Ownable {
         _;
     }
     // test if the _category is allowed by the people 
-    modifier withPermit(address _peopleAddress,uint _permissionCategory) {
-        License storage tmpLicense = personInfo[_peopleAddress].permissionList[msg.sender];
+    modifier withPermit(address _personId,uint _permissionCategory) {
+        License storage tmpLicense = personInfo[_personId].permissionList[msg.sender];
         // One authorization only takes effect within 5 blocks
         require(tmpLicense.existTime.add(PERIODBLOCK) < block.number,
           "is not allowed to accesss the data now!");
         _;
     }
+    
     /**
      * Contract Authorization API (TODO)
      *
@@ -166,11 +165,14 @@ contract DataController is Ownable {
     
     // upload the preliminary data
     function uploadData(address _personId, uint8[28*28] _metaData)
-      public personExistOnly onlyOwner {
-        Statistic storage tmpData;
-        tmpData.metaData = _metaData;
-        tmpData.dataTimestamp = block.timestamp;
-        personInfo[_personId].datas.push(tmpData);
+        public
+        personExistOnly
+        onlyOwner 
+    {
+        Statistic storage tmpStatistic;
+        tmpStatistic.encodedData = _metaData;
+        tmpStatistic.dataTimestamp = block.timestamp;
+        personInfo[_personId].datas.push(tmpStatistic);
     }
 
     /**
@@ -185,7 +187,7 @@ contract DataController is Ownable {
     // grant acess to institution & change permission
     function authorize(
         address _institutionId,  // the adress of institution which is authorized to
-        uint _au,   // what kind of permission (eg. 111 - all the data &log could access)
+        uint _au,   // what kind of permission (eg. 11111 - all the data &log could access)
         uint _start, // the start of time period that data can be access
         uint _end   // the end of time period that data can be access
         )
@@ -194,18 +196,20 @@ contract DataController is Ownable {
     {
         for (uint i = 0; i < NUMCATE; i.add(1)) {
             if((_au>>i) & 1 == 1) {
-                string storage category = numToCategory[1 << i];
-                License storage tmpLicense = personInfo[msg.sender].permissionList[_institutionId];
+                //string storage category = numToCategory[1 << i];
+                uint tmp = 1 << i;
+                License storage tmpLicense = personInfo[msg.sender].licenseList[_institutionId];
                 tmpLicense.existTime = block.number;
                 tmpLicense.start = _start;
                 tmpLicense.end = _end;
+                tmpLicense.permission[tmp] = true;
             }
         }
     }
 
     // user cacel the permission of all the category data access
     function personDeauthorize(address _institutionId) public personExistOnly {
-        deauthorize(_institutionId,0); // 000 cacel all the data
+        deauthorize(_institutionId,0); // 00000 cacel all the data permission
     }
     
     // user cacel his own account
@@ -215,134 +219,36 @@ contract DataController is Ownable {
 // --------------------------- Service Interface -------------------------------
 
 
-    function registerInstitution(string _name, string _category) public {
+    function registerInstitution(string _name, string _category) public onlyOwner{
         Institution storage i = institutionInfo[msg.sender];
         i.exist = true;
         i.name = _name;
         i.category = _category;
     }
 
-    //obtain an index range of data
-    function getDataAvailableIndex(
+    //obtain an index range of data want to get
+    function getAvailableIndexRange(
         address _personId,
-        uint _dataCategory  //the category of data want to obtain
-    ) 
-        public 
-        view 
-        withPermit(_personId,_dataCategory)
-        returns(uint, uint) //-1 -- don't get exactly index
-        {
-            uint startIndex = 0;
-            uint endIndex = 0;
-            uint len = getDataNum(_personId,_dataCategory);
-            uint i = 0;
-            uint j = len - 1;
-            for (i; i < len; i++) {
-                if(personInfo[_personId].datas[i].dataTimestamp <= personInfo[_personId].permissionList[msg.sender].start) {
-                    startIndex = i;
-                    break;
-                }
-            }
-            if(startIndex == 0 && i != 0) {
-                return (0,0);
-            }
-            for(j; j >= i; j--) {
-                if (personInfo[_personId].datas[j].dataTimestamp >= personInfo[_personId].permissionList[msg.sender].end) {
-                    endIndex = j;
-                    break;
-                }
-            }
-            if(endIndex == 0 && (j != len-1)) {
-                return(0,0);
-            }
-            return(startIndex,endIndex);
+        uint _dataCategory
+    )
+    public
+    view
+    withPermit(_personId,_dataCategory)
+    returns(uint, uint)
+    {
+        if (_dataCategory == 1) {
+            return getAvailableStatisticIndex();
+        } 
+        else if (_dataCategory == 2 || _dataCategory == 4) {
+            return getAvailableLogIndex();
+        } 
+        else if(_dataCategory == 8 || _dataCategory == 16) {
+            return getAvailableReceiptIndex();
         }
-        
-    //obtain an available index range of log
-    function getLogAvailableIndex(
-        address _personId,
-        uint _dataCategory  //the category of data want to obtain
-    ) 
-        public 
-        view 
-        withPermit(_personId,_dataCategory)
-        returns(uint, uint) //-1 -- don't get exactly index
-        {
-            uint startIndex = 0;
-            uint endIndex = 0;
-            uint len = getDataNum(_personId,_dataCategory);
-            uint i = 0;
-            uint j = len - 1;
-            Logs[] storage tmpLogs;
-            if (_dataCategory == 2) {
-                tmpLogs = personInfo[_personId].hospitalLogs;
-            }
-            else if(_dataCategory = 4) {
-                tmpLogs = personInfo[_personId].insuranceLogs;
-            }
-            for (i; i < len; i++) {
-                if(tmpLogs[i].dataTimestamp <= personInfo[_personId].permissionList[msg.sender].start) {
-                    startIndex = i;
-                    break;
-                }
-            }
-            if(startIndex == 0 && i != 0) {
-                return (0,0);
-            }
-            for(j; j >= i; j--) {
-                if (tmpLogs[j].dataTimestamp >= personInfo[_personId].permissionList[msg.sender].end) {
-                    endIndex = j;
-                    break;
-                }
-            }
-            if(endIndex == 0 && (j != len-1)) {
-                return(0,0);
-            }
-            return(startIndex,endIndex);
+        else {
+            revert("get the wrong _dataCategory code");
         }
-        
-    //obtain an available index range of feedbacks of people
-    function getAvailableFeedbackIndex(
-        address _personId,
-        uint _dataCategory  //the category of data want to obtain
-    ) 
-        public 
-        view 
-        withPermit(_personId,_dataCategory)
-        returns(uint, uint) //(0,0) -- don't get exactly index
-        {
-            uint startIndex = 0;
-            uint endIndex = 0;
-            uint len = getDataNum(_personId,_dataCategory);
-            uint i = 0;
-            uint j = len - 1;
-            Feedback[] storage tmpFeedbacks;
-            if (_dataCategory == 2) {
-                tmpFeedbacks = personInfo[_personId].hospitalFeedbacks;
-            }
-            else if(_dataCategory = 4) {
-                tmpFeedbacks = personInfo[_personId].insuranceFeedbacks;
-            }
-            for (i; i < len; i++) {
-                if(tmpFeedbacks[i].dataTimestamp <= personInfo[_personId].permissionList[msg.sender].start) {
-                    startIndex = i;
-                    break;
-                }
-            }
-            if(startIndex == 0 && i != 0) {
-                return (0,0);
-            }
-            for(j; j >= i; j--) {
-                if (tmpFeedbacks[j].dataTimestamp >= personInfo[_personId].permissionList[msg.sender].end) {
-                    endIndex = j;
-                    break;
-                }
-            }
-            if(endIndex == 0 && (j != len-1)) {
-                return(0,0);
-            }
-            return(startIndex,endIndex);
-        }
+    }
     
     // get the body feature statistics.
     // if have the permit of data &access success,first return data index(>0) & the metadata
@@ -358,7 +264,7 @@ contract DataController is Ownable {
         returns(uint, uint8[28*28])
     {
         require(personInfo[_personId].exist == true, "people don't exist");
-        Data tmpData = personInfo[_personId].datas[_index];
+        Statistic tmpData = personInfo[_personId].datas[_index];
         string memory c = numToCategory[_dataCategory];
         License storage tmpLicense = personInfo[_personId].permissionList[msg.sender];
         if(timeFilter(tmpData.dataTimestamp,tmpLicense.start,tmpLicense.end)) {
@@ -457,9 +363,9 @@ contract DataController is Ownable {
         require(personInfo[_personId].exist == true, "don't exist");
         Log storage tmpLog;
         tmpLog.cate = _dataCategory;
-        tmplog.category = institutionInfo[msg.sender].category;
-        tmplog.institutionName = institutionInfo[msg.sender].name;
-        tmplog.logTimestamp = block.timestamp;
+        tmpLog.category = institutionInfo[msg.sender].category;
+        tmpLog.institutionName = institutionInfo[msg.sender].name;
+        tmpLog.logTimestamp = block.timestamp;
 
         // TODO(ljj): wrapper the keccak as a function returns string.
         if (stringEqual(tmpLog.category,"hospital")) {
@@ -494,7 +400,6 @@ contract DataController is Ownable {
     ) 
         internal 
         view
-        withPermit(_personId,_dataCategory)
         returns(uint)
     {
         if(_dataCategory == 1) {
@@ -523,5 +428,166 @@ contract DataController is Ownable {
     }
     // TODO : the timestamp problem 
     // function logArrange(uint dataCategory) internal
-
+    
+    //obtain an available index range of feedbacks of people
+    //inclding hospitalRecipt & insuranceReceipts
+    function getAvailableStatisticIndex(
+        address _personId,
+        address _institutionId,
+        uint _dataCategory  //the category of data want to obtain
+    ) 
+        internal 
+        view 
+        returns(uint, uint) //(0,0) -- don't get exactly index
+        {
+            uint startIndex = 0;
+            uint stopIndex = 0;
+            uint len = getDataNum(_personId,_dataCategory);
+            //the time duration of data can be accessed
+            uint beginLiceseTime = personInfo[_personId].liceseList[_institutionId].start;
+            uint endLiceseTime = personInfo[_personId].liceseList[_institutionId].end;
+            Receipt[] tmpReceipts;
+            bool findBegin;
+            bool findEnd;
+            
+            if (_dataCategory == 8) {
+                tmpReceipts = personInfo[_personId].hospitalReceipts;
+            }
+            else {
+                tmpReceipts = personInfo[_personId].insuranceReceipts;
+            }
+            
+            for (uint i = 0; i < len; i.add(1)) {
+                uint currentElemTime = (tmpReceipts[i].startTs + tmpReceipts[i].stopTs)/2;
+                //find the first element can access
+                if(isStartElem(currentElemTime,beginLiceseTime)) {
+                    startIndex = i;
+                    findBegin = true;
+                    break;
+                }
+            }
+            for(int j = uint(len-1); j >=0 ; j--) {
+                currentElemTime = (tmpReceipts[i].startTs + tmpReceipts[i].stopTs)/2;
+                if(isStopElem(currentElemTime,endLiceseTime)) {
+                    stopIndex = j;
+                    findEnd = true;
+                    break;
+                }
+            }
+            if(findEnd && findBegin) {
+                return (startIndex,stopIndex);
+            }
+            return (0,0);
+        }
+    //obtain an available index range of log
+    function getLogAvailableIndex(
+        address _personId,
+        uint _dataCategory  //the category of data want to obtain
+    ) 
+        public 
+        view 
+        withPermit(_personId,_dataCategory)
+        returns(uint, uint) //-1 -- don't get exactly index
+        {
+            uint startIndex = 0;
+            uint endIndex = 0;
+            uint len = getDataNum(_personId,_dataCategory);
+            uint i = 0;
+            uint j = len - 1;
+            Log[] storage tmpLogs;
+            if (_dataCategory == 2) {
+                tmpLogs = personInfo[_personId].hospitalLogs;
+            }
+            else if(_dataCategory = 4) {
+                tmpLogs = personInfo[_personId].insuranceLogs;
+            }
+            for (i; i < len; i++) {
+                if(tmpLogs[i].dataTimestamp <= personInfo[_personId].permissionList[msg.sender].start) {
+                    startIndex = i;
+                    break;
+                }
+            }
+            if(startIndex == 0 && i != 0) {
+                return (0,0);
+            }
+            for(j; j >= i; j--) {
+                if (tmpLogs[j].dataTimestamp >= personInfo[_personId].permissionList[msg.sender].end) {
+                    endIndex = j;
+                    break;
+                }
+            }
+            if(endIndex == 0 && (j != len-1)) {
+                return(0,0);
+            }
+            return(startIndex,endIndex);
+        }
+        
+    //obtain an available index range of feedbacks of people
+    //inclding hospitalRecipt & insuranceReceipts
+    function getAvailableReceiptIndex(
+        address _personId,
+        address _institutionId,
+        uint _dataCategory  //the category of data want to obtain
+    ) 
+        internal 
+        view 
+        returns(uint, uint) //(0,0) -- don't get exactly index
+        {
+            uint startIndex = 0;
+            uint stopIndex = 0;
+            uint len = getDataNum(_personId,_dataCategory);
+            //the time duration of data can be accessed
+            uint beginLiceseTime = personInfo[_personId].liceseList[_institutionId].start;
+            uint endLiceseTime = personInfo[_personId].liceseList[_institutionId].end;
+            Receipt[] tmpReceipts;
+            bool findBegin;
+            bool findEnd;
+            
+            if (_dataCategory == 8) {
+                tmpReceipts = personInfo[_personId].hospitalReceipts;
+            }
+            else {
+                tmpReceipts = personInfo[_personId].insuranceReceipts;
+            }
+            
+            for (uint i = 0; i < len; i.add(1)) {
+                uint currentElemTime = tmpReceipts[i].receiptTimestamp;
+                //find the first element can access
+                if(isStartElem(currentElemTime,beginLiceseTime)) {
+                    startIndex = i;
+                    findBegin = true;
+                    break;
+                }
+            }
+            for(int j = uint(len-1); j >=0 ; j--) {
+                currentElemTime = tmpReceipts[j].receiptTimestamp;
+                if(isStopElem(currentElemTime,endLiceseTime)) {
+                    stopIndex = j;
+                    findEnd = true;
+                    break;
+                }
+            }
+            if(findEnd && findBegin) {
+                return (startIndex,stopIndex);
+            }
+            return (0,0);
+        }
+        
+    //if the timestamp of current data packet can be begin access of the license begin
+    function isStartElem(uint _current, uint _begin) internal pure returns(bool) {
+        if (_begin <= _current) {
+            return true;
+        } else {
+            return false;
+        }
+    }
+    
+    //if the timestamp of current data packet can be stop access of the license end
+    function isStopElem(uint _current, uint _end) internal pure returns(bool) {
+        if(_end >= _current) {
+            return true;
+        } else {
+            return false;
+        }
+    }
 }
