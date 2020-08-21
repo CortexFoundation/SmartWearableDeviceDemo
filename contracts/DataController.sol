@@ -20,7 +20,7 @@ contract DataController is Ownable {
        * It's the Statistics collected through the smart bracelet.And the chip in 
        * the bracelet will encode the data
        **/
-        uint[25] encodedData;
+        uint256[25] encodedData;
     }
 
     // the data access log of user's data
@@ -31,7 +31,7 @@ contract DataController is Ownable {
         string institutionName;
         // what data has been visited
         //eg.00001-Statistic,00010--hospitalLog, 00100--insuranceLog,01000--hospitalReceipt,10000--insuranceReceipt
-        uint cate;
+        uint32 cate;
     }
 
     // the feedback for service actions
@@ -44,7 +44,7 @@ contract DataController is Ownable {
        *  insurance purchase, claim, ..., etc. We will define the feedback
        *  data encoder via communicating with all the service suppliers.
        **/
-      uint[25] encodedData; // the encoded feedback for service
+      uint256[25] encodedData; // the encoded feedback for service
     }
     
     struct License {
@@ -70,7 +70,7 @@ contract DataController is Ownable {
     struct Institution {
         bool exist;
         string name;
-        string category;    // now just 2 institution type: hospital and insurance
+        uint32 category;    // now just 2 institution type: hospital and insurance
     }
 
 // --------------------------------- Event -------------------------------------
@@ -110,50 +110,59 @@ contract DataController is Ownable {
 // ------------------------- Contract Authorization ----------------------------
 
     // the person who has been register
-    modifier personExistOnly(address _personId) {
-        require(personInfo[_personId].exist == true, 
+    modifier personExistOnly(address _personAddr) {
+        require(personInfo[_personAddr].exist == true, 
         "this person has not register yet!");
         _;
     }
     
     // test if the _category is allowed to access
-    modifier withPermitStatistic(address _personId, address _instituionId) {
+    modifier withPermitStatistic(address _personAddr, address _instituionId) {
         License storage tmpLicense = personInfo[_prsonId].licenseList[_institutionId];
         require(((tmpLicense >> 0) &1) == 1,"not allowed to access the statistics");
         _;
     }
     
-    modifier withPermitHospitalLog(address _personId, address _institutionId) {
+    modifier withPermitHospitalLog(address _personAddr, address _institutionId) {
          License storage tmpLicense = personInfo[_prsonId].licenseList[_institutionId];
          require(((tmpLicense >> 1) &1) == 1,"not allowed to access the hospitalLog");
          _;
     }
     
-    modifier withPermitInsuranceLog(address _personId, address _institutionId) {
+    modifier withPermitInsuranceLog(address _personAddr, address _institutionId) {
          License storage tmpLicense = personInfo[_prsonId].licenseList[_institutionId];
          require(((tmpLicense >> 2) &1) == 1,"not allowed to access the insuranceLog");
          _;
     }
     
-    modifier withPermithospitalReceipt(address _personId, address _institutionId) {
+    modifier withPermithospitalReceipt(address _personAddr, address _institutionId) {
          License storage tmpLicense = personInfo[_prsonId].licenseList[_institutionId];
          require(((tmpLicense >> 3) &1) == 1,"not allowed to access the hospitalReceipt");
          _;
     }
     
-    modifier withPermitInsuranceReceipt(address _personId, address _institutionId) {
+    modifier withPermitInsuranceReceipt(address _personAddr, address _institutionId) {
          License storage tmpLicense = personInfo[_prsonId].licenseList[_institutionId];
          require(((tmpLicense >> 4) &1) == 1,"not allowed to access the InsuranceReceipt");
          _;
     }
     
     //if the permission is effient
-    modifier withPermitTime(address _personId,address _institutionId) {
-        License storage tmpLicense = personInfo[_prsonId].licenseList[_institutionId]; 
+    modifier withPermitTime(address _personAddr, uint _dataCategory) {
+        require(personInfo[_personAddr].exist, "personal not exist");
+
+        License storage tmpLicense = personInfo[_personAddr].licenseList[msg.sender]; 
         // One authorization only takes effect within 5 blocks
         require(tmpLicense.existTime.add(PERIODBLOCK) < block.number,
           "is not allowed to accesss the data now!");
-        _;
+
+
+        for (int i = 0; i < 5; ++i) {
+          mask = 1 << i;
+          if ((_dataCategory & mask) == mask) {
+            require((tmpLicense.permission & mask) == mask, "check data");
+          }
+        }
     }
     
     /**
@@ -188,15 +197,15 @@ contract DataController is Ownable {
      **/
 
     // Register through the server if you own a bracelet(collect the informaion)
-    function registerUser(address _personId, string _name) public onlyOwner {
-        Person storage p = personInfo[_personId];
+    function registerUser(address _personAddr, string _name) public onlyOwner {
+        Person storage p = personInfo[_personAddr];
         p.exist = true;
         p.name = _name;
-        emit registerSuccess(_personId);
+        emit registerSuccess(_personAddr);
     }
     
     // upload the preliminary data
-    function uploadData(address _personId, uint[25] _metaData)
+    function uploadData(address _personAddr, uint[25] _metaData)
         public
         personExistOnly
     {
@@ -204,7 +213,7 @@ contract DataController is Ownable {
         tmpStatistic.encodedData = _metaData;
         tmpStatistic.startTs = block.number;
         tmpStatistic.stopTs = block.number;
-        personInfo[_personId].statistics.push(tmpStatistic);
+        personInfo[_personAddr].statistics.push(tmpStatistic);
     }
 
     /**
@@ -262,118 +271,113 @@ contract DataController is Ownable {
 
 // ------------------------- Institution Interface -----------------------------
 
-
-    function registerInstitution(string _name, string _category) 
-        public onlyOwner
-    {
+    function registerInstitution(string _name, uint32 _category) private {
         Institution storage i = institutionInfo[msg.sender];
         i.exist = true;
         i.name = _name;
         i.category = _category;
         institutionAddresses.push(msg.sender);
     }
+
+    function registerHospital(string _name) public onlyOwner {
+      registerInstitution(_name, 0);
+    }
+
+    function registerInsurance(string _name) public onlyOwner {
+      registerInstitution(_name, 1);
+    }
+
+    function registerAdvertisement(string _name) public onlyOwner {
+      registerInstitution(_name, 2);
+    }
     
     // get the body feature statistics.
     // if have the permit of data &access success,first return data index(>0) & the metadata
     // or not be allowed to get the time duration data return 0
     function accessStatistic(
-        address _personId,
-        //address _institutionId,
+        address _personAddr,
+        // address _institutionId,
         uint _dataCategory,
         uint _index
     ) 
         public 
         view 
-        withPermitTime(_personId,_dataCategory)
-        returns(uint, uint[25])
+        withPermitTime(_personAddr, _dataCategory)
+        returns(uint256[25])
     {
-        require(personInfo[_personId].exist == true, "people don't exist");
-        Statistic[] storage tmpStatistics = personInfo[_personId].statistics;
+        Statistic[] storage tmpStatistics = personInfo[_personAddr].statistics;
         uint len = tmpStatistics.length;
-        if (_index > (len-1)) {
-            revert("can't access data not exist");
-        }
-        return (_index,tmpStatistics[len-1-_index].encodedData);
+        require(_index + 1 > len, "data index out of bound");
+
+        return tmpStatistics[len-1-_index].encodedData;
     }
 
     // get the log
     // if access success,first return index(>0),or return 0
-    function accessLog(
-        address _personId,
-        address _institutionId,
-        uint _dataCategory,
-        uint _index
-    ) 
-        public 
-        withPermit(_personId,_dataCategory) 
-        returns(
-            uint,
-            string,
-            uint
-        )
-    {
-        //TODO: index access right control
-        require(personInfo[_personId].exist == true, "don't exist");
-        Log[] storage tmpLogs;
-        uint len;
-        if(stringEqual(institutionInfo[_institutionId].category,"hospital")) {
-            recordDataAcess(2,_personId);
-            tmpLogs = personInfo[_personId].hospitalLogs;
-            len = tmpLogs.length;
-        }
-        else{
-            recordDataAcess(4,_personId);
-            tmpLogs = personInfo[_personId].insuranceLogs;
-            len = tmpLogs.length;
-        }
-         if (_index > (len-1)) {
-            revert("can't access data not exist");
-        }
-        return (_index, tmpLogs[len - _index -1].institutionName, tmpLogs[len - _index -1].cate);
-    }
+    // function accessLog(
+    //     address _personAddr,
+    //     address _institutionId,
+    //     uint _dataCategory,
+    //     uint _index
+    // ) 
+    //     public 
+    //     withPermit(_personAddr,_dataCategory) 
+    //     returns(
+    //         uint,
+    //         string,
+    //         uint
+    //     )
+    // {
+    //     //TODO: index access right control
+    //     require(personInfo[_personAddr].exist == true, "don't exist");
+    //     Log[] storage tmpLogs;
+    //     uint len;
+    //     if(stringEqual(institutionInfo[_institutionId].category,"hospital")) {
+    //         recordDataAcess(2,_personAddr);
+    //         tmpLogs = personInfo[_personAddr].hospitalLogs;
+    //         len = tmpLogs.length;
+    //     }
+    //     else{
+    //         recordDataAcess(4,_personAddr);
+    //         tmpLogs = personInfo[_personAddr].insuranceLogs;
+    //         len = tmpLogs.length;
+    //     }
+    //      if (_index > (len-1)) {
+    //         revert("can't access data not exist");
+    //     }
+    //     return (_index, tmpLogs[len - _index -1].institutionName, tmpLogs[len - _index -1].cate);
+    // }
     
     // get the log
     // if access success,first return index(>0),or return 0
     function accessReceipt(
-        address _personId,
-        address _institutionId,
+        address _personAddr,
         uint _dataCategory,
-        uint _index
-    ) 
+        uint _index) 
         public
-        withPermit(_personId,_dataCategory) 
-        returns(uint, uint[25])
+        withPermitTime(_personAddr, _dataCategory) 
+        returns(uint256[25])
     {
         //TODO: index access right control
-        require(personInfo[_personId].exist == true, "don't exist");
         Receipt[] storage tmpReceipts;
         uint len;
-        if(stringEqual(institutionInfo[_institutionId].category,"hospital")) {
-            recordDataAcess(8,_personId);
-            tmpReceipts= personInfo[_personId].hospitalReceipts;
+
+        if (institutionInfo[msg.sender].category == 0) {
+            recordDataAcess(8,_personAddr);
+            tmpReceipts = personInfo[_personAddr].hospitalReceipts;
             len = tmpReceipts.length;
-        }
-        else{
-            recordDataAcess(16,_personId);
-            tmpReceipts= personInfo[_personId].insuranceReceipts;
+        } else if (institutionInfo[msg.sender].category == 1) {
+            recordDataAcess(16,_personAddr);
+            tmpReceipts = personInfo[_personAddr].insuranceReceipts;
             len = tmpReceipts.length;
+        } else {
+            revert("not supported");
         }
-        if (_index > (len-1)) {
-            revert("can't access data not exist");
-        }
-        return (_index, tmpReceipts[len-1-_index].encodedData);
+
+        require(_index + 1 > len, "data index out of bound");
+
+        return tmpReceipts[len-1-_index].encodedData;
     }
-
-    // // every insurance service has its own contract address
-    // function setInsuranceInstance(string _name, address _address) public onlyOwner {
-    //     insuranceAddress[_name] = _address;
-    // }
-
-    function getInstitutionName(address _address) public view returns(string memory){
-        require(institutionInfo[_address].exist == true, "this institution not exist");
-        return institutionInfo[_address].name;
-    }
-
 
 
 // ---------------------------- Helper Functions -------------------------------
@@ -390,11 +394,11 @@ contract DataController is Ownable {
     // record log of  access the  data
     function recordDataAcess(
         uint _dataCategory, //kind of data&log be visited
-        address _personId
+        address _personAddr
     ) 
         internal 
     {
-        require(personInfo[_personId].exist == true, "don't exist");
+        require(personInfo[_personAddr].exist == true, "don't exist");
         Log storage tmpLog;
         tmpLog.cate = _dataCategory;
         string storage insuranceCategory = institutionInfo[msg.sender].category;
@@ -402,9 +406,9 @@ contract DataController is Ownable {
         tmpLog.logTimestamp = block.number;
 
         if (stringEqual(insuranceCategory,"hospital")) {
-            personInfo[_personId].hospitalLogs.push(tmpLog);
+            personInfo[_personAddr].hospitalLogs.push(tmpLog);
         } else if (stringEqual(insuranceCategory,"insurance")) {
-            personInfo[_personId].insuranceLogs.push(tmpLog);
+            personInfo[_personAddr].insuranceLogs.push(tmpLog);
         } else {
             revert("unknown institution");
         }
@@ -417,8 +421,8 @@ contract DataController is Ownable {
             return false;
         }
     }
-    // function getReceipt(uint8[28*28] _metaData,address _personId) internal {
-    //     personInfo[_personId].feedbacks.push(_metaData);
+    // function getReceipt(uint8[28*28] _metaData,address _personAddr) internal {
+    //     personInfo[_personAddr].feedbacks.push(_metaData);
     // }
     // TODO : the timestamp problem 
     // function logArrange(uint dataCategory) internal
