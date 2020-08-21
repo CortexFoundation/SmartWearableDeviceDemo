@@ -2,7 +2,7 @@ pragma solidity ^0.4.18;
 
 import "./Ownable.sol";
 import "./SafeMath.sol";
-import "./Services.sol";
+import "./Institution.sol";
 
 contract DataController is Ownable {
     using SafeMath for uint256;

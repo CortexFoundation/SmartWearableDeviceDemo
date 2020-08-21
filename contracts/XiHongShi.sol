@@ -1,6 +1,6 @@
 pragma solidity ^0.4.24;
 
-import "./Service.sol";
+import "./Institution.sol";
 import "./SafeMath.sol";
 import "./DataController.sol";
 
