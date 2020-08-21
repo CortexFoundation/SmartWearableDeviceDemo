@@ -94,6 +94,7 @@ contract DataController is Ownable {
     // all the data about people
     mapping (address => Person) private personInfo;
     // all the data about institution
+    address[] institutionAddresses;
     mapping (address => Institution) private institutionInfo;
 
     constructor() public {
@@ -214,38 +215,29 @@ contract DataController is Ownable {
      *  Service, exposing interface to user.
      **/
 
-    // function getNumberOfServices() public view returns(uint256) {
-    //   _;
-    // }
+    function getNumberOfInstitutions()
+        public view returns(uint256)
+    {
+      return institutionAddresses.length;
+    }
 
-    // function getService(uint8 _serviceIndex)
-    //     public view returns(string, uint256) {
-    //   _;
-    // }
-
-    // function isServiceActive(uint8 _serviceIndex)
-    //     public view returns(bool) {
-    //   _;
-    // }
-
-    // function getAvailableServices()
-    //     public view returns(uint256) {
-    //   _;
-    // }
-
-    // function getActiveServices()
-    //     public view returns(uint256) {
-    //   _;
-    // }
+    function getInstitution(uint256 _institutionIndex)
+        public view returns(address)
+    {
+      return institutionAddresses[_institutionIndex]
+    }
 
 // ------------------------- Institution Interface -----------------------------
 
 
-    function registerInstitution(string _name, string _category) public onlyOwner{
+    function registerInstitution(string _name, string _category) 
+        public onlyOwner
+    {
         Institution storage i = institutionInfo[msg.sender];
         i.exist = true;
         i.name = _name;
         i.category = _category;
+        institutionAddresses.push(msg.sender);
     }
     
     // get the body feature statistics.
