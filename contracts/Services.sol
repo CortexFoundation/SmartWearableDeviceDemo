@@ -1,7 +1,7 @@
 pragma solidity ^0.4.24;
 // pragma experimental ABIEncoderV2;
 
-import "./Ownable.sol"
+import "./Ownable.sol";
 
 // last implemented contract: 0x70ae5b30c81d00cc4b6cbe765a71ab89e35d2cc4
 contract Institution is Ownable {
@@ -9,6 +9,15 @@ contract Institution is Ownable {
 // ---------------------------- Company Information ------------------------------
 
     string public companyName;
+    address public dataControllerAddress = 0xe2d50CFb680ffD3E39a187ae8C22B4f81b092A10;
+    
+    function updateCompanyName(string _newName) public onlyOwner {
+        companyName = _newName;
+    }
+    
+    function updateDataControllerAddress(address _newAddr) public onlyOwner {
+        dataControllerAddress = _newAddr;
+    }
 
     /**
      * Data Authorization API
@@ -23,7 +32,7 @@ contract Institution is Ownable {
      *    The authorization levels of necessary data access for all
      *    the services in this company.
      **/
-    function authRequest() public pure returns(uint);
+    // function authRequest() public returns(uint);
 
     // All the provided services of company.
     // Maximum list length : 256
@@ -35,6 +44,10 @@ contract Institution is Ownable {
     //  `_serviceIndex`.
     function getService(uint8 _serviceIndex)
         public view returns(string, uint256);
+        
+    
+    // TODO(wlq): move the `registerInstitution` function into the general service
+    function registerInstitution() public;
 
     // More details information about service, such as
     //  the insurance acknowledge, scheme, ... etc.
@@ -83,8 +96,24 @@ contract Institution is Ownable {
 }
 
 contract Insurance is Institution {
+    
+// -------------------------- Basic Functions ---------------------------------
+    
+    function withdraw(uint256 _value) public onlyOwner {
+        require(address(this).balance >= _value, "Insufficient fund");
+        msg.sender.transfer(_value);
+    }
+    
+    function withdrawAll() public onlyOwner {
+        require(address(this).balance > 0, "Insufficient fund");
+        msg.sender.transfer(address(this).balance);
+    }
+    
+    function deposit() public payable onlyOwner {
+        require(msg.value > 0, "You have to deposit at least 1 unit of CTXC");
+    }
 
 // -------------------------- Warranty Service ---------------------------------
 
-    function payment(address _userAddr) public onlyOwner;
+    function payment(address _userAddr) public;
 }

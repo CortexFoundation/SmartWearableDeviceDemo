@@ -6,13 +6,15 @@ import "./DataController.sol";
 
 contract XiHongShiInsurance is Insurance {
     using SafeMath for uint;
-
+    
+    address public modelAddress = 0xfc1488AaCB44f7E94C7FcC19E7684219673902AB;
+    
     uint8 public USER_DATA_COUNT = 10;
     // 0: low risk, 1: medium risk, 2: high risk
     uint8 public RISK_LEVEL_COUNT = 3;
     
     // service structure for this insruance company.
-    // other companies might have different structure
+    // other companies might have different structures
     struct Service{
         string name;
         uint256 riskThreshold;
@@ -20,14 +22,13 @@ contract XiHongShiInsurance is Insurance {
         uint256 payment;
     }
     
-    address public dataControllerAddress = 0xe2d50CFb680ffD3E39a187ae8C22B4f81b092A10;
-    address public moderator;
     Service[] services;
+        
     uint256[] public inputData;
     
     constructor() public payable {
-        moderator = msg.sender;
         companyName = "XiHongShi Insurance";
+        inputData = new uint256[](((28 * 28) + 31) >> 5 );
         services.push(Service("1", 5, 1, 10));
         services.push(Service("2", 7, 2, 20));
         services.push(Service("3", 15, 3, 30));
@@ -35,19 +36,19 @@ contract XiHongShiInsurance is Insurance {
     
     // --- moderator functions --- 
     function getAvaialbleServicesByUser(address _userAddr) 
-        public view moderatorOnly returns(uint256)
+        public view onlyOwner returns(uint256)
     {
         return availableServicesByUser[_userAddr];
     }
     
     function getActiveServicesByUser(address _userAddr) 
-        public view moderatorOnly returns(uint256)
+        public view onlyOwner returns(uint256)
     {
         return activeServicesByUser[_userAddr];
     }
     
-    function isServiceActiveByUser(address _userAddr, uint8 _serviceIndex) 
-        public view moderatorOnly returns(bool)
+    function isServiceActiveByUser(address _userAddr, uint256 _serviceIndex) 
+        public view onlyOwner returns(bool)
     {
         if((availableServicesByUser[_userAddr] >> _serviceIndex & 1) == 1){
             return true;
@@ -55,16 +56,7 @@ contract XiHongShiInsurance is Insurance {
         return false;
     }
     
-    function updateCompanyName(string _newName) public moderatorOnly {
-        companyName = _newName;
-    }
-    
-    function updateDataControllerAddress(address _newAddr) public moderatorOnly {
-        dataControllerAddress = _newAddr;
-    }
-    
-    // TODO(wlq): move the `registerInstitution` function into the general service
-    function registerInstitution() public moderatorOnly {
+    function registerInstitution() public onlyOwner {
         DataController(dataControllerAddress).registerInstitution(
             companyName, 
             "Insurance"
@@ -78,7 +70,7 @@ contract XiHongShiInsurance is Insurance {
         uint256 _payment
     ) 
         public 
-        moderatorOnly 
+        onlyOwner 
     {
         services.push(Service(_name, _riskThreshold, _fee, _payment));
     }
@@ -89,29 +81,15 @@ contract XiHongShiInsurance is Insurance {
         uint256 _riskThreshold
     ) 
         public 
-        moderatorOnly 
+        onlyOwner 
     {
         services[_index].name = _newName;
         services[_index].riskThreshold = _riskThreshold;
     }
     
-    function withdraw(uint256 _value) public moderatorOnly {
-        require(address(this).balance >= _value, "Insufficient fund");
-        msg.sender.transfer(_value);
-    }
-    
-    function withdrawAll() public moderatorOnly {
-        require(address(this).balance > 0, "Insufficient fund");
-        msg.sender.transfer(address(this).balance);
-    }
-    
-    function deposit() public payable moderatorOnly {
-        require(msg.value > 0, "You have to deposit at least 1 unit of CTXC");
-    }
-    
-    function payment(address _userAddr, uint8 _serviceIndex) public moderatorOnly {
-        // TODO: check user's current health condition first,
-        // require TRUE for payment
+    function payment(address _userAddr, uint256 _serviceIndex) public onlyOwner {
+        require(checkCurrentHealthCondition(_userAddr), 
+            "User health condition not valid for payment");
         if(isServiceActiveByUser(_userAddr, _serviceIndex)){
             require(
                 address(this).balance >= services[_serviceIndex].payment, 
@@ -119,6 +97,8 @@ contract XiHongShiInsurance is Insurance {
             );
             _userAddr.transfer(services[_serviceIndex].payment);
         }
+        activeServicesByUser[msg.sender] = 
+            activeServicesByUser[msg.sender] ^ (1 << _serviceIndex);
     }
     
     
@@ -144,20 +124,11 @@ contract XiHongShiInsurance is Insurance {
     
     
     // --- service AI inferences --- 
-    // use compressed integer for requesting caterories
-    // e.g., 0101 => cat 3 & 1
-    function requestAuthorisation(address _clientAddr, uint256 _categories) public {
-        // FIXME: check arguments
-        DataController(dataControllerAddress)
-            .authorize(_clientAddr, _categories, 2, 3);
-    }
-    
-    function getAvailableServices(
+    function checkForAvailbleServices(
         address _userAddr, 
         address _modelHash
     ) 
         public 
-        returns(uint256)
     {
         // infer risk factor based on user's physical data
         uint256[] memory infer_output = new uint256[](1);
@@ -183,7 +154,6 @@ contract XiHongShiInsurance is Insurance {
             }
         }
         availableServicesByUser[_userAddr] = availableServices;
-        return availableServices;
     }
     
     function getUserData(uint _dataCategory) internal {
@@ -212,14 +182,9 @@ contract XiHongShiInsurance is Insurance {
             activeServicesByUser[msg.sender] | (1 << _serviceIndex);
     }
     
-    // get data from data contract
-    // used for insurance payment 
+    // TODO: implement
+    // get data from data contract, used for insurance payment 
     function checkCurrentHealthCondition(address _userAddr) public returns(bool){
-      if(_userAddr == address(0)){
-          return true;
-      }
-      else{
-          return false;
-      }
+        return true;
     }
 }
