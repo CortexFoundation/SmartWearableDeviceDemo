@@ -9,7 +9,7 @@ contract Institution is Ownable {
 // ---------------------------- Company Information ------------------------------
 
     string public companyName;
-    address public dataControllerAddress = 0xe2d50CFb680ffD3E39a187ae8C22B4f81b092A10;
+    address public dataControllerAddress = 0x16d9A5c566D4BFd50A4A43A883faf5ac920c6B32;
     
     function updateCompanyName(string _newName) public onlyOwner {
         companyName = _newName;
@@ -47,7 +47,7 @@ contract Institution is Ownable {
         
     
     // TODO(wlq): move the `registerInstitution` function into the general service
-    function registerInstitution() public;
+    // function registerInstitution() public;
 
     // More details information about service, such as
     //  the insurance acknowledge, scheme, ... etc.
@@ -115,6 +115,6 @@ contract Insurance is Institution {
 
 // -------------------------- Warranty Service ---------------------------------
 
-    function payment(address _userAddr) public;
+    function payment(address _userAddr, uint256 _serviceIndex) public;
 }
 
