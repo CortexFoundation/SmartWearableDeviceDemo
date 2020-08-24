@@ -16,30 +16,33 @@ import "./Context.sol";
  * the owner.
  */
 contract Ownable is Context {
-    address private _owner;
-    event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
+    // address private _owner;
+    mapping(address => bool) validOwner;
+
+    // event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
 
     /**
      * @dev Initializes the contract setting the deployer as the initial owner.
      */
     constructor () public {
         address msgSender = _msgSender();
-        _owner = msgSender;
-        emit OwnershipTransferred(address(0), msgSender);
+        // _owner = msgSender;
+        validOwner[msgSender] = true;
+        // emit OwnershipTransferred(address(0), msgSender);
     }
 
     /**
      * @dev Returns the address of the current owner.
      */
-    function owner() public view returns (address) {
-        return _owner;
+    function isOwner(address _addr) public view returns (bool) {
+        return validOwner[_addr];
     }
 
     /**
      * @dev Throws if called by any account other than the owner.
      */
     modifier onlyOwner() {
-        require(_owner == _msgSender(), "Ownable: caller is not the owner");
+        require(validOwner[msg.sender], "Ownable: caller is not the owner");
         _;
     }
 
@@ -50,18 +53,16 @@ contract Ownable is Context {
      * NOTE: Renouncing ownership will leave the contract without an owner,
      * thereby removing any functionality that is only available to the owner.
      */
-    function renounceOwnership() public onlyOwner {
-        emit OwnershipTransferred(_owner, address(0));
-        _owner = address(0);
+    function removeOwnership() public onlyOwner {
+        // emit OwnershipTransferred(_owner, address(0));
+        validOwner[msg.sender] = false;
     }
 
     /**
      * @dev Transfers ownership of the contract to a new account (`newOwner`).
      * Can only be called by the current owner.
      */
-    function transferOwnership(address newOwner) public onlyOwner {
-        require(newOwner != address(0), "Ownable: new owner is the zero address");
-        emit OwnershipTransferred(_owner, newOwner);
-        _owner = newOwner;
+    function addOwnership(address _newOwner) public onlyOwner {
+        validOwner[_newOwner] = true;
     }
 }

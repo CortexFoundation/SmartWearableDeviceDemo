@@ -153,16 +153,6 @@ contract DataController is Ownable {
 
         _;
     }
-    modifier permitRegister() {
-        require(authorizationRegister[msg.sender] == true,
-        "not allowed to register user");
-        _;
-    }
-    function registerAuthorization(address _authAddr) public onlyOwner {
-        authorizationRegister[_authAddr] = true;
-    }
-   
-
 
 // ----------------------------- User Interface --------------------------------
 
@@ -188,7 +178,7 @@ contract DataController is Ownable {
      **/
 
     // Register through the server if you own a bracelet(collect the informaion)
-    function registerUser(address _personAddr, string _name) public permitRegister {
+    function registerUser(address _personAddr, string _name) public onlyOwner {
         Person storage p = personInfo[_personAddr];
         p.exist = true;
         p.name = _name;
@@ -272,15 +262,15 @@ contract DataController is Ownable {
         institutionAddresses.push(_institutionAddr);
     }
 
-    function registerHospital(address hospitalAddr,string _name) public permitRegister {
+    function registerHospital(address hospitalAddr,string _name) public onlyOwner {
       registerInstitution(hospitalAddr,_name, 0);
     }
 
-    function registerInsurance(address insuranceAddr,string _name) public permitRegister {
+    function registerInsurance(address insuranceAddr,string _name) public onlyOwner {
       registerInstitution(insuranceAddr,_name, 1);
     }
 
-    function registerAdvertisement(address advertisementAddr,string _name) public permitRegister {
+    function registerAdvertisement(address advertisementAddr,string _name) public onlyOwner {
       registerInstitution(advertisementAddr,_name, 2);
     }
     
