@@ -87,10 +87,13 @@ contract DataController is Ownable {
     uint constant NUMCATE = 5;
     // time period the number of the block
     uint constant PERIODBLOCK = 5;
+    //number of intergate block statitic 
+    uint constant DATABLOCK = 2;
     
     // every insurance contract has its own address;
     //mapping (string => address) insuranceAddress;
     
+    address[] personAddress;
     // all the data about people
     mapping (address => Person) private personInfo;
     // all the data about institution
@@ -109,6 +112,13 @@ contract DataController is Ownable {
 
 // ------------------------- Contract Authorization ----------------------------
 
+    /**
+     * Contract Authorization API (TODO)
+     *
+     * We need some extended permission management mechanism, such as
+     *  the `registerUser` permission may authorize another organization.
+     **/
+     
     // the person who has been register
     modifier personExistOnly(address _personAddr) {
         require(personInfo[_personAddr].exist == true, 
@@ -117,7 +127,7 @@ contract DataController is Ownable {
     }
     
     //if the permission is effient
-    modifier withPermitTime(address _personAddr, uint _dataCategory) {
+    modifier withPermit(address _personAddr, uint _dataCategory) {
         require(personInfo[_personAddr].exist, "personal not exist");
 
         License storage tmpLicense = personInfo[_personAddr].licenseList[msg.sender]; 
@@ -136,12 +146,7 @@ contract DataController is Ownable {
         _;
     }
     
-    /**
-     * Contract Authorization API (TODO)
-     *
-     * We need some extended permission management mechanism, such as
-     *  the `registerUser` permission may authorize another organization.
-     **/
+   
 
 
 // ----------------------------- User Interface --------------------------------
@@ -172,6 +177,7 @@ contract DataController is Ownable {
         Person storage p = personInfo[_personAddr];
         p.exist = true;
         p.name = _name;
+        personAddress.push(_personAddr);
         emit registerSuccess(_personAddr);
     }
     
@@ -221,7 +227,7 @@ contract DataController is Ownable {
     function deleteData() public personExistOnly(msg.sender) onlyOwner {
         delete personInfo[msg.sender];
     }
-
+    
     /**
      * User Service Wrapper API
      *
@@ -243,24 +249,24 @@ contract DataController is Ownable {
 
 // ------------------------- Institution Interface -----------------------------
 
-    function registerInstitution(string _name, uint32 _category) private {
-        Institution storage i = institutionInfo[msg.sender];
+    function registerInstitution(address _institutionAddr,string _name, uint32 _category) private {
+        Institution storage i = institutionInfo[_institutionAddr];
         i.exist = true;
         i.name = _name;
         i.category = _category;
-        institutionAddresses.push(msg.sender);
+        institutionAddresses.push(_institutionAddr);
     }
 
-    function registerHospital(string _name) public onlyOwner {
-      registerInstitution(_name, 0);
+    function registerHospital(address hospitalAddr,string _name) public onlyOwner {
+      registerInstitution(hospitalAddr,_name, 0);
     }
 
-    function registerInsurance(string _name) public onlyOwner {
-      registerInstitution(_name, 1);
+    function registerInsurance(address insuranceAddr,string _name) public onlyOwner {
+      registerInstitution(insuranceAddr,_name, 1);
     }
 
-    function registerAdvertisement(string _name) public onlyOwner {
-      registerInstitution(_name, 2);
+    function registerAdvertisement(address advertisementAddr,string _name) public onlyOwner {
+      registerInstitution(advertisementAddr,_name, 2);
     }
     
     // get the body feature statistics.
@@ -274,7 +280,7 @@ contract DataController is Ownable {
     ) 
         public 
         view 
-        withPermitTime(_personAddr, _dataCategory)
+        withPermit(_personAddr, _dataCategory)
         returns(uint256[25])
     {
         Statistic[] storage tmpStatistics = personInfo[_personAddr].statistics;
@@ -285,49 +291,42 @@ contract DataController is Ownable {
     }
 
     // get the log
-    // if access success,first return index(>0),or return 0
     // function accessLog(
     //     address _personAddr,
-    //     address _institutionId,
     //     uint _dataCategory,
-    //     uint _index
-    // ) 
-    //     public 
-    //     withPermit(_personAddr,_dataCategory) 
-    //     returns(
-    //         uint,
-    //         string,
-    //         uint
-    //     )
+    //     uint _index) 
+    //     public
+    //     withPermit(_personAddr, _dataCategory) 
+    //     returns(uint256[25])
     // {
-    //     //TODO: index access right control
-    //     require(personInfo[_personAddr].exist == true, "don't exist");
-    //     Log[] storage tmpLogs;
+    //     Log[] memory tmpLogs;
     //     uint len;
-    //     if(stringEqual(institutionInfo[_institutionId].category,"hospital")) {
+
+    //     if (institutionInfo[msg.sender].category == 0) {
     //         recordDataAcess(2,_personAddr);
     //         tmpLogs = personInfo[_personAddr].hospitalLogs;
     //         len = tmpLogs.length;
-    //     }
-    //     else{
+    //     } else if (institutionInfo[msg.sender].category == 1) {
     //         recordDataAcess(4,_personAddr);
     //         tmpLogs = personInfo[_personAddr].insuranceLogs;
-    //         len = tmpLogs.length;
+    //         len = tmpReceipts.length;
+    //     } else {
+    //         revert("not supported");
     //     }
-    //      if (_index > (len-1)) {
-    //         revert("can't access data not exist");
-    //     }
-    //     return (_index, tmpLogs[len - _index -1].institutionName, tmpLogs[len - _index -1].cate);
+
+    //     require(_index + 1 > len, "data index out of bound");
+
+    //     return tmpLogs[len-1-_index].encodedData;
     // }
-    
-    // get the log
-    // if access success,first return index(>0),or return 0
+
+
+    // get the receipt
     function accessReceipt(
         address _personAddr,
         uint _dataCategory,
         uint _index) 
         public
-        withPermitTime(_personAddr, _dataCategory) 
+        withPermit(_personAddr, _dataCategory) 
         returns(uint256[25])
     {
         //TODO: index access right control
@@ -393,8 +392,43 @@ contract DataController is Ownable {
     // function getReceipt(uint8[28*28] _metaData,address _personAddr) internal {
     //     personInfo[_personAddr].feedbacks.push(_metaData);
     // }
-    // TODO : the timestamp problem 
-    // function logArrange(uint dataCategory) internal
+    
+    //when the data is too big,compressions it
+    function statisticCollation() public onlyOwner{
+        uint peopleNum = personAddress.length;
+        for (uint256 i = 0; i < peopleNum; i++) {
+            integrateData(i);
+        }
+    }
+
+    function integrateData(uint256 _index) internal{
+        address personAddr = personAddress[_index];
+        Statistic[] storage personStatistics = personInfo[personAddr].statistics;
+        uint256 len = personStatistics.length;
+        uint256 cur = 0;
+        //get the new cpmpression data
+        for (uint i = 0; i < len; i += DATABLOCK) {
+            if (i+1 >= len) {
+                personStatistics[cur] = personStatistics[i];
+                cur.add(1);
+            }
+            personStatistics[cur].startTs = personStatistics[i].startTs;
+            personStatistics[cur].stopTs = personStatistics[i+1].stopTs;
+            personStatistics[cur].encodedData = addStatistic(personStatistics[i].encodedData, personStatistics[i+1].encodedData);
+            cur.add(1);
+        }
+        //pop the other thing
+        while (cur < len) {
+            delete personStatistics[cur];
+            cur.add(1);
+        }
+    }
+
+    function addStatistic(uint256[25] storage _meta1, uint256[25] storage _meta2) internal view returns(uint256[25]) {
+        uint256[25] memory tmpData;
+        for (uint i = 0 ; i < 25; i++) {
+            tmpData[i] = (_meta1[i] + _meta2[i])/2;
+        }
+        return tmpData;
+    }
 }
-
-
