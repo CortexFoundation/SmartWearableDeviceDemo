@@ -93,7 +93,10 @@ contract DataController is Ownable {
     
     // every insurance contract has its own address;
     //mapping (string => address) insuranceAddress;
-    
+
+    // authorize who could register user
+    mapping(address => bool) authorizationRegister;
+
     address[] personAddress;
     // all the data about people
     mapping (address => Person) private personInfo;
@@ -126,7 +129,11 @@ contract DataController is Ownable {
         "this person has not register yet!");
         _;
     }
-    
+    modifier institutionRegistered() {
+        require(institutionInfo[msg.sender].exist == true,
+        "the institution has not been registered");
+        _;
+    }
     //if the permission is effient
     modifier withPermit(address _personAddr, uint _dataCategory) {
         require(personInfo[_personAddr].exist, "personal not exist");
@@ -146,7 +153,14 @@ contract DataController is Ownable {
 
         _;
     }
-    
+    modifier permitRegister() {
+        require(authorizationRegister[msg.sender] == true,
+        "not allowed to register user");
+        _;
+    }
+    function registerAuthorization(address _authAddr) public onlyOwner {
+        authorizationRegister[_authAddr] = true;
+    }
    
 
 
@@ -174,7 +188,7 @@ contract DataController is Ownable {
      **/
 
     // Register through the server if you own a bracelet(collect the informaion)
-    function registerUser(address _personAddr, string _name) public onlyOwner {
+    function registerUser(address _personAddr, string _name) public permitRegister {
         Person storage p = personInfo[_personAddr];
         p.exist = true;
         p.name = _name;
@@ -258,18 +272,36 @@ contract DataController is Ownable {
         institutionAddresses.push(_institutionAddr);
     }
 
-    function registerHospital(address hospitalAddr,string _name) public onlyOwner {
+    function registerHospital(address hospitalAddr,string _name) public permitRegister {
       registerInstitution(hospitalAddr,_name, 0);
     }
 
-    function registerInsurance(address insuranceAddr,string _name) public onlyOwner {
+    function registerInsurance(address insuranceAddr,string _name) public permitRegister {
       registerInstitution(insuranceAddr,_name, 1);
     }
 
-    function registerAdvertisement(address advertisementAddr,string _name) public onlyOwner {
+    function registerAdvertisement(address advertisementAddr,string _name) public permitRegister {
       registerInstitution(advertisementAddr,_name, 2);
     }
     
+    function saveReceipt(
+        address _personAddr,
+        uint _timestamp,
+        uint256[25] _receiptData,
+        uint _category
+    ) public institutionRegistered 
+    {
+        Receipt memory tmpReceipt = Receipt(_timestamp,_receiptData);
+        if (_category == 0) {
+            personInfo[_personAddr].hospitalReceipts.push(tmpReceipt);
+        }
+        else if(_category == 1) {
+            personInfo[_personAddr].insuranceReceipts.push(tmpReceipt);
+        }else {
+            revert("unexpected _category(0 : hospital,1 : insurance)");
+        }
+    }
+
     // get the body feature statistics.
     // if have the permit of data &access success,first return data index(>0) & the metadata
     // or not be allowed to get the time duration data return 0
