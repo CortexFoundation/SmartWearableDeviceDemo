@@ -1,4 +1,4 @@
-pragma solidity ^0.4.18;
+pragma solidity ^0.4.24;
 
 import "./Ownable.sol";
 import "./SafeMath.sol";
@@ -81,8 +81,6 @@ contract DataController is Ownable {
 
 // ----------------------------- Private Members -------------------------------
 
-    // categorty of data
-    mapping (uint => string) numToCategory;
     uint256 INT_MAX = 2**256 - 1;
     // the number of data & log category,temporarily is 3
     uint constant NUMCATE = 5;
@@ -90,6 +88,13 @@ contract DataController is Ownable {
     uint constant PERIODBLOCK = 5;
     //number of intergate block statitic 
     uint constant DATABLOCK = 2;
+
+    //category mask of data
+    uint constant STATISTIC = 1;     // 00001 -- statistic record
+    uint constant MEDICALLOG = 2;   // 00010 -- medical access record
+    uint constant INSURANCELOG = 4; // 00100 -- insurance access record
+    uint constant MEDICALRECEIPT = 8;   //01000 -- medical receipt
+    uint constant INSURANCERECEIPT = 16;    //10000 -- insurance access record 
     
     // every insurance contract has its own address;
     //mapping (string => address) insuranceAddress;
@@ -103,15 +108,6 @@ contract DataController is Ownable {
     // all the data about institution
     address[] institutionAddresses;
     mapping (address => Institution) private institutionInfo;
-
-    constructor() public {
-      // TODO(ljj): can the map be moved into the line 87?
-      numToCategory[1] = "data";  // 00001--data record
-      numToCategory[2] = "medicalLog";   // 00010--hospital access record
-      numToCategory[4] = "insuranceLog"; // 00100--insurance company access record
-      numToCategory[8] = "medicalReceipt";  //01000
-      numToCategory[16] = "insuranceReceipt";    //10000
-    }
 
 
 // ------------------------- Contract Authorization ----------------------------
@@ -188,15 +184,14 @@ contract DataController is Ownable {
     
     // upload the preliminary data
     function uploadData(
-        address _personAddr, 
         uint[25] _metaData, 
         uint256 _startBlk, 
         uint256 _stopBlk) public
-        personExistOnly(_personAddr)
+        personExistOnly(msg.sender)
     {
         Statistic memory tmpStatistic = Statistic(
             _startBlk, _stopBlk, _metaData);
-        personInfo[_personAddr].statistics.push(tmpStatistic);
+        personInfo[msg.sender].statistics.push(tmpStatistic);
     }
 
     /**
