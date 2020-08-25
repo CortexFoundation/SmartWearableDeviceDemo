@@ -102,13 +102,32 @@ contract XiHongShiInsurance is Insurance {
     function updateService(
         uint256 _index, 
         string _newName, 
-        uint256 _riskThreshold
+        string _statement,
+        string _notes,
+        uint256 _riskThreshold, 
+        uint256 _fee,
+        uint256 _payment
     ) 
         public 
         onlyOwner 
     {
         services[_index].name = _newName;
+        services[_index].statement = _statement;
+        services[_index].notes = _notes;
         services[_index].riskThreshold = _riskThreshold;
+        services[_index].fee = _fee;
+        services[_index].payment = _payment;
+    }
+    
+    function removeService(uint256 _index) public onlyOwner {
+        if(_index == services.length - 1) {
+            delete services[services.length - 1];
+            --services.length;
+            return;
+        }
+        services[_index] = services[services.length - 1];
+        delete services[services.length - 1];
+        --services.length;
     }
     
     function payment(address _userAddr, uint256 _serviceIndex) public onlyOwner {
@@ -166,8 +185,7 @@ contract XiHongShiInsurance is Insurance {
     
     // --- service AI inferences --- 
     function checkForAvailbleServices(
-        address _userAddr, 
-        address _modelHash
+        address _userAddr
     ) 
         public 
     {
@@ -177,7 +195,7 @@ contract XiHongShiInsurance is Insurance {
         for(uint i = 0; i < USER_DATA_COUNT; ++i){
             // category 1: user data
             getUserData(_userAddr, 1, i);
-            inferArray(_modelHash, inputData, infer_output);
+            inferArray(modelAddress, inputData, infer_output);
             uint256 riskFactor = infer_output[0];
             uint256 riskIndex = 0;
             for(uint j = 1; j < RISK_LEVEL_COUNT; ++j){
@@ -265,4 +283,7 @@ contract XiHongShiInsurance is Insurance {
         }
         return false;
     }
+    
+    // --- debug section ---
+    
 }

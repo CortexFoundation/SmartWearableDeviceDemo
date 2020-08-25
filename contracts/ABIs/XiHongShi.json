@@ -33,24 +33,6 @@
 		"type": "function"
 	},
 	{
-		"constant": false,
-		"inputs": [
-			{
-				"name": "_userAddr",
-				"type": "address"
-			},
-			{
-				"name": "_modelHash",
-				"type": "address"
-			}
-		],
-		"name": "checkForAvailbleServices",
-		"outputs": [],
-		"payable": false,
-		"stateMutability": "nonpayable",
-		"type": "function"
-	},
-	{
 		"constant": true,
 		"inputs": [
 			{
@@ -81,6 +63,20 @@
 		],
 		"payable": false,
 		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"constant": false,
+		"inputs": [
+			{
+				"name": "_userAddr",
+				"type": "address"
+			}
+		],
+		"name": "checkForAvailbleServices",
+		"outputs": [],
+		"payable": false,
+		"stateMutability": "nonpayable",
 		"type": "function"
 	},
 	{
@@ -142,6 +138,44 @@
 		],
 		"payable": false,
 		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"constant": false,
+		"inputs": [
+			{
+				"name": "_index",
+				"type": "uint256"
+			},
+			{
+				"name": "_newName",
+				"type": "string"
+			},
+			{
+				"name": "_statement",
+				"type": "string"
+			},
+			{
+				"name": "_notes",
+				"type": "string"
+			},
+			{
+				"name": "_riskThreshold",
+				"type": "uint256"
+			},
+			{
+				"name": "_fee",
+				"type": "uint256"
+			},
+			{
+				"name": "_payment",
+				"type": "uint256"
+			}
+		],
+		"name": "updateService",
+		"outputs": [],
+		"payable": false,
+		"stateMutability": "nonpayable",
 		"type": "function"
 	},
 	{
@@ -308,6 +342,20 @@
 		"type": "function"
 	},
 	{
+		"constant": false,
+		"inputs": [
+			{
+				"name": "_index",
+				"type": "uint256"
+			}
+		],
+		"name": "removeService",
+		"outputs": [],
+		"payable": false,
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
 		"constant": true,
 		"inputs": [
 			{
@@ -436,28 +484,6 @@
 		"constant": false,
 		"inputs": [],
 		"name": "removeOwnership",
-		"outputs": [],
-		"payable": false,
-		"stateMutability": "nonpayable",
-		"type": "function"
-	},
-	{
-		"constant": false,
-		"inputs": [
-			{
-				"name": "_index",
-				"type": "uint256"
-			},
-			{
-				"name": "_newName",
-				"type": "string"
-			},
-			{
-				"name": "_riskThreshold",
-				"type": "uint256"
-			}
-		],
-		"name": "updateService",
 		"outputs": [],
 		"payable": false,
 		"stateMutability": "nonpayable",
