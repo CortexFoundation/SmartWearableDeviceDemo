@@ -428,18 +428,15 @@ contract DataController is Ownable {
         for (uint i = 0; i < len; i += DATABLOCK) {
             if (i+1 >= len) {
                 personStatistics[cur] = personStatistics[i];
-                cur.add(1);
+                cur++;
             }
             personStatistics[cur].startTs = personStatistics[i].startTs;
             personStatistics[cur].stopTs = personStatistics[i+1].stopTs;
             personStatistics[cur].encodedData = addStatistic(personStatistics[i].encodedData, personStatistics[i+1].encodedData);
-            cur.add(1);
+            cur++;
         }
         //pop the other thing
-        while (cur < len) {
-            delete personStatistics[cur];
-            cur.add(1);
-        }
+        personStatistics.length = cur;
     }
 
     function addStatistic(uint256[25] storage _meta1, uint256[25] storage _meta2) internal view returns(uint256[25]) {
