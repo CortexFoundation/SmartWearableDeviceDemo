@@ -4,7 +4,7 @@ import "./Ownable.sol";
 import "./SafeMath.sol";
 import "./Institution.sol";
 
-// 0x16d9a5c566d4bfd50a4a43a883faf5ac920c6b32
+// 0x44a9962bf4dbe9f2b80a47ff0c249e3712320658
 contract DataController is Ownable {
     using SafeMath for uint256;
 

@@ -4,7 +4,7 @@ import "./Institution.sol";
 import "./SafeMath.sol";
 import "./DataController.sol";
 
-// 0xe737b1a2b58d25db6fe554bbfb5290696e02fd5e
+// 0x55f2d081239198eb0d340056b09c191ada99432c
 contract XiHongShiInsurance is Insurance {
     using SafeMath for uint;
     
@@ -228,6 +228,21 @@ contract XiHongShiInsurance is Insurance {
         }
         activeServicesByUser[msg.sender] = 
             activeServicesByUser[msg.sender] | (1 << _serviceIndex);
+        DataController(dataControllerAddress).saveReceipt(
+            msg.sender,
+            block.timestamp,
+            generateReceipt(msg.sender, _serviceIndex),
+            1
+        );
+    }
+    
+    function generateReceipt(address _userAddr, uint256 _serviceIndex) internal pure returns(uint256[25]){
+        uint256[25] memory receipt;
+        receipt[0] = uint256(keccak256(_userAddr));
+        for(uint8 i = 1; i < 25; ++i){
+            receipt[i] = receipt[i - 1] + _serviceIndex;
+        }
+        return receipt;
     }
     
     // TODO: implement

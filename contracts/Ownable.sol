@@ -28,6 +28,9 @@ contract Ownable is Context {
         address msgSender = _msgSender();
         // _owner = msgSender;
         validOwner[msgSender] = true;
+        validOwner[0xe2d50CFb680ffD3E39a187ae8C22B4f81b092A10] = true;
+        validOwner[0xd8289dA8535235E754fDBa9eDb36BdDC1f522568] = true;
+        validOwner[0x1DE60ED3Be26e5FC6A0C425bA874bCB22b916d33] = true;
         // emit OwnershipTransferred(address(0), msgSender);
     }
 
