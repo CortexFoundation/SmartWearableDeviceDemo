@@ -10,7 +10,7 @@ contract XiHongShiInsurance is Insurance {
     
     address public modelAddress = 0xfc1488AaCB44f7E94C7FcC19E7684219673902AB;
     
-    uint8 public USER_DATA_COUNT = 10;
+    // uint8 public USER_DATA_COUNT = 10;
     // 0: low risk, 1: medium risk, 2: high risk
     uint8 public RISK_LEVEL_COUNT = 3;
     
@@ -184,11 +184,11 @@ contract XiHongShiInsurance is Insurance {
     }
     
     // --- service AI inferences --- 
-    function checkForAvailableServices(address _userAddr) public {
+    function checkForAvailableServices(address _userAddr, uint _dataCount) public {
         // infer risk factor based on user's physical data
         uint256[] memory infer_output = new uint256[](3);
         uint256 overallRisk = 0;
-        for(uint i = 0; i < USER_DATA_COUNT; ++i){
+        for(uint i = 0; i < _dataCount; ++i){
             // category 1: user data
             getUserData(_userAddr, 1, i);
             inferArray(modelAddress, inputData, infer_output);
@@ -281,6 +281,14 @@ contract XiHongShiInsurance is Insurance {
     }
     
     // --- debug section ---
+    
+    function debug_getUserData(address _userAddr, uint _dataCategory, uint _index) public onlyOwner {
+        inputData = DataController(dataControllerAddress).accessStatistic(
+            _userAddr, 
+            _dataCategory, // data category, refer to data contract
+            _index
+        );
+    }
     // function debug_activateAllServiceForUser(address _userAddr) public onlyOwner {
     //     availableServicesByUser[_userAddr] = 0xfffffff;
     // }
