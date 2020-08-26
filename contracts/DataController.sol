@@ -4,7 +4,7 @@ import "./Ownable.sol";
 import "./SafeMath.sol";
 import "./Institution.sol";
 
-// 0x44a9962bf4dbe9f2b80a47ff0c249e3712320658
+// 0x113aEb08b9c79bAc21B2737317d5B239b6843A52
 contract DataController is Ownable {
     using SafeMath for uint256;
 
@@ -460,7 +460,8 @@ contract DataController is Ownable {
 // -----------------------------test function ---------------------------
     function setTimePeriodBlock(uint _tpb) public onlyOwner {
         PERIODBLOCK = _tpb;
-    };
+    }
+    
     function getpeopleNUM() public view returns(uint) {
         return personAddress.length;
     }

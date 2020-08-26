@@ -4,13 +4,13 @@ import "./Institution.sol";
 import "./SafeMath.sol";
 import "./DataController.sol";
 
-// 0x8b837b7d45b40d01fe54ac3b7674f95cc8ceaba6
+// 0xe91f46e8d905a28baa2a81686af10489730aa1aa
 contract XiHongShiInsurance is Insurance {
     using SafeMath for uint;
     
     address public modelAddress = 0xfc1488AaCB44f7E94C7FcC19E7684219673902AB;
     
-    // uint8 public USER_DATA_COUNT = 10;
+    uint8 public USER_DATA_COUNT = 10;
     // 0: low risk, 1: medium risk, 2: high risk
     uint8 public RISK_LEVEL_COUNT = 3;
     
@@ -21,6 +21,8 @@ contract XiHongShiInsurance is Insurance {
         string statement;
         string notes;
         uint256 riskThreshold;
+        // This fee is limited to constant
+        // could be adjusted based on 
         uint256 fee;
         uint256 payment;
     }
@@ -130,21 +132,6 @@ contract XiHongShiInsurance is Insurance {
         --services.length;
     }
     
-    function payment(address _userAddr, uint256 _serviceIndex) public onlyOwner {
-        require(checkCurrentHealthCondition(_userAddr), 
-            "User health condition not valid for payment");
-        if(isServiceActiveByUser(_userAddr, _serviceIndex)){
-            require(
-                address(this).balance >= services[_serviceIndex].payment, 
-                "Insufficient fund"
-            );
-            _userAddr.transfer(services[_serviceIndex].payment);
-        }
-        activeServicesByUser[msg.sender] = 
-            activeServicesByUser[msg.sender] ^ (1 << _serviceIndex);
-    }
-    
-    
     // --- getters --- 
     function getNumberOfServices() public view returns(uint256) {
         return services.length;
@@ -184,11 +171,15 @@ contract XiHongShiInsurance is Insurance {
     }
     
     // --- service AI inferences --- 
-    function checkForAvailableServices(address _userAddr, uint _dataCount) public {
+    function checkForAvailableServices(address _userAddr) public {
         // infer risk factor based on user's physical data
         uint256[] memory infer_output = new uint256[](3);
         uint256 overallRisk = 0;
-        for(uint i = 0; i < _dataCount; ++i){
+        uint256 dataCount = DataController(dataControllerAddress).getPersonDataLen(_userAddr);
+        if(USER_DATA_COUNT > dataCount){
+            dataCount = USER_DATA_COUNT;
+        }
+        for(uint i = 0; i < dataCount; ++i){
             // category 1: user data
             getUserData(_userAddr, 1, i);
             inferArray(modelAddress, inputData, infer_output);
@@ -262,8 +253,10 @@ contract XiHongShiInsurance is Insurance {
     // TODO: implement
     // get data from data contract, used for insurance payment 
     function checkCurrentHealthCondition(address _userAddr) public returns(bool){
+        // For this demo, we are using user's data for checking user's health condition
+        // in the future, it would require receipt from the hospital/other institutions
         // 2: hospitial receipt, 0: last recorded receipt
-        getUserReceipt(_userAddr, 2, 0);
+        getUserData(_userAddr, 2, 0);
         uint256[] memory infer_output = new uint256[](3);
         inferArray(modelAddress, inputData, infer_output);
         uint256 riskFactor = infer_output[0];
@@ -278,6 +271,20 @@ contract XiHongShiInsurance is Insurance {
             return true;
         }
         return false;
+    }
+    
+    function payment(uint256 _serviceIndex) public {
+        require(checkCurrentHealthCondition(msg.sender), 
+            "User health condition not valid for payment");
+        if(isServiceActiveByUser(msg.sender, _serviceIndex)){
+            require(
+                address(this).balance >= services[_serviceIndex].payment, 
+                "Insufficient fund"
+            );
+            msg.sender.transfer(services[_serviceIndex].payment);
+        }
+        activeServicesByUser[msg.sender] = 
+            activeServicesByUser[msg.sender] ^ (1 << _serviceIndex);
     }
     
     // --- debug section ---
