@@ -1,5 +1,4 @@
 pragma solidity ^0.4.24;
-// pragma experimental ABIEncoderV2;
 
 import "./Ownable.sol";
 
@@ -9,7 +8,7 @@ contract Institution is Ownable {
 // ---------------------------- Company Information ------------------------------
 
     string public companyName;
-    address public dataControllerAddress = 0x44A9962BF4Dbe9f2b80A47FF0c249e3712320658;
+    address public dataControllerAddress = 0x113aEb08b9c79bAc21B2737317d5B239b6843A52;
     
     function updateCompanyName(string _newName) public onlyOwner {
         companyName = _newName;
@@ -90,7 +89,7 @@ contract Institution is Ownable {
     }
 
 // -------------------------- Service Purchase ---------------------------------
-    function checkForAvailableServices(address _userAddr, uint _dataCount) public;
+    function checkForAvailableServices(address _userAddr) public;
     
     function purchaseService(uint256 _serviceIndex)
       public payable;
@@ -119,6 +118,6 @@ contract Insurance is Institution {
 
 // -------------------------- Warranty Service ---------------------------------
 
-    function payment(address _userAddr, uint256 _serviceIndex) public;
+    function payment(uint256 _serviceIndex) public;
 }
 
