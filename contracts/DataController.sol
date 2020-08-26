@@ -86,7 +86,7 @@ contract DataController is Ownable {
     uint constant NUMCATE = 5;
     // time period the number of the block
     //uint constant PERIODBLOCK = 5;
-    uint constant PERIODBLOCK = 20;  // test
+    uint PERIODBLOCK = 200;  // test
     //number of intergate block statitic 
     uint constant DATABLOCK = 2;
 
@@ -182,7 +182,7 @@ contract DataController is Ownable {
         personAddress.push(_personAddr);
         emit registerSuccess(_personAddr);
     }
-    
+
     // upload the preliminary data
     function uploadData(
         uint[25] _metaData, 
@@ -447,4 +447,10 @@ contract DataController is Ownable {
         }
         return tmpData;
     }
+
+// -----------------------------test function ---------------------------
+    function setTimePeriodBlock(uint _tpb) public onlyOwner {
+        PERIODBLOCK = _tpb;
+    };
+
 }
