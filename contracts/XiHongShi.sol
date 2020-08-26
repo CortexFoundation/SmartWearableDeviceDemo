@@ -4,7 +4,7 @@ import "./Institution.sol";
 import "./SafeMath.sol";
 import "./DataController.sol";
 
-// 0x55f2d081239198eb0d340056b09c191ada99432c
+// 0x8b837b7d45b40d01fe54ac3b7674f95cc8ceaba6
 contract XiHongShiInsurance is Insurance {
     using SafeMath for uint;
     
@@ -184,11 +184,7 @@ contract XiHongShiInsurance is Insurance {
     }
     
     // --- service AI inferences --- 
-    function checkForAvailbleServices(
-        address _userAddr
-    ) 
-        public 
-    {
+    function checkForAvailableServices(address _userAddr) public {
         // infer risk factor based on user's physical data
         uint256[] memory infer_output = new uint256[](3);
         uint256 overallRisk = 0;
@@ -242,7 +238,7 @@ contract XiHongShiInsurance is Insurance {
         require(msg.value >= services[_serviceIndex].fee, "Insufficient payment");
         if(msg.value > services[_serviceIndex].fee){
             // refund excess payment
-            msg.sender.transfer(services[_serviceIndex].fee - msg.value);
+            msg.sender.transfer(msg.value - services[_serviceIndex].fee);
         }
         activeServicesByUser[msg.sender] = 
             activeServicesByUser[msg.sender] | (1 << _serviceIndex);
@@ -285,5 +281,37 @@ contract XiHongShiInsurance is Insurance {
     }
     
     // --- debug section ---
+    // function debug_activateAllServiceForUser(address _userAddr) public onlyOwner {
+    //     availableServicesByUser[_userAddr] = 0xfffffff;
+    // }
     
+    // function debug_deactivateAllServiceForUser(address _userAddr) public onlyOwner {
+    //     availableServicesByUser[_userAddr] = 0;
+    // }
+    
+    // function debug_purchaseServiceForUser3(address _userAddr, uint256 _serviceIndex) public onlyOwner payable{
+    //     require(
+    //         (availableServicesByUser[_userAddr] >> _serviceIndex & 1) == 1,
+    //         "Not qualified"
+    //         );
+    //     require(msg.value >= services[_serviceIndex].fee, "Insufficient payment");
+    //     if(msg.value > services[_serviceIndex].fee){
+    //         // refund excess payment
+    //         _userAddr.transfer(msg.value - services[_serviceIndex].fee);
+    //     }
+    // }
+    
+    // function debug_purchaseServiceForUser4(address _userAddr, uint256 _serviceIndex) public onlyOwner payable{
+    //     require(
+    //         (availableServicesByUser[_userAddr] >> _serviceIndex & 1) == 1,
+    //         "Not qualified"
+    //         );
+    //     require(msg.value >= services[_serviceIndex].fee, "Insufficient payment");
+    //     if(msg.value > services[_serviceIndex].fee){
+    //         // refund excess payment
+    //         _userAddr.transfer(msg.value - services[_serviceIndex].fee);
+    //     }
+    //     activeServicesByUser[_userAddr] = 
+    //         activeServicesByUser[_userAddr] | (1 << _serviceIndex);
+    // }
 }

@@ -90,7 +90,7 @@ contract Institution is Ownable {
     }
 
 // -------------------------- Service Purchase ---------------------------------
-    function checkForAvailbleServices(address _userAddr) public;
+    function checkForAvailableServices(address _userAddr) public;
     
     function purchaseService(uint256 _serviceIndex)
       public payable;
