@@ -137,7 +137,7 @@ contract DataController is Ownable {
 
         License storage tmpLicense = personInfo[_personAddr].licenseList[msg.sender]; 
         // One authorization only takes effect within 5 blocks
-        require(tmpLicense.existTime.add(PERIODBLOCK) < block.number,
+        require(tmpLicense.existTime.add(PERIODBLOCK) > block.number,
           "is not allowed to accesss the data now!");
 
 
@@ -229,7 +229,7 @@ contract DataController is Ownable {
     }
     
     // user delete his own account
-    function deleteData() public personExistOnly(msg.sender) onlyOwner {
+    function deleteAccount() public personExistOnly(msg.sender) onlyOwner {
         delete personInfo[msg.sender];
     }
     
@@ -313,7 +313,7 @@ contract DataController is Ownable {
     {
         Statistic[] storage tmpStatistics = personInfo[_personAddr].statistics;
         uint len = tmpStatistics.length;
-        require(_index + 1 > len, "data index out of bound");
+        require(_index < len, "data index out of bound");
 
         return tmpStatistics[len-1-_index].encodedData;
     }
@@ -342,7 +342,7 @@ contract DataController is Ownable {
     //         revert("not supported");
     //     }
 
-    //     require(_index + 1 > len, "data index out of bound");
+    //     require(_index < len, "data index out of bound");
 
     //     return tmpLogs[len-1-_index].encodedData;
     // }
@@ -373,7 +373,7 @@ contract DataController is Ownable {
             revert("not supported");
         }
 
-        require(_index + 1 > len, "data index out of bound");
+        require(_index < len, "data index out of bound");
 
         return tmpReceipts[len-1-_index].encodedData;
     }
@@ -436,6 +436,7 @@ contract DataController is Ownable {
         uint256 cur = 0;
         //get the new cpmpression data
         for (uint i = 0; i < len; i += DATABLOCK) {
+            //
             if (i+1 >= len) {
                 personStatistics[cur]= personStatistics[i];
             } else {
@@ -474,6 +475,7 @@ contract DataController is Ownable {
         Person storage p = personInfo[_p];
         return p.statistics[_index].encodedData;
     }
+    
     function uploadTestStatistic(uint num) public personExistOnly(msg.sender){
         uint _startBlk = num;
         uint _stopBlk = num+7;
