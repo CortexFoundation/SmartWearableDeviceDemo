@@ -134,6 +134,10 @@ contract XiHongShiInsurance is Insurance {
     }
     
     // --- getters --- 
+    function getRequiredPermissions() public view returns(uint256){
+        return 3;
+    }
+    
     function getNumberOfServices() public view returns(uint256) {
         return services.length;
     }

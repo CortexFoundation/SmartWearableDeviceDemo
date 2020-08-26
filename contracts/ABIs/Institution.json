@@ -164,6 +164,20 @@
 	},
 	{
 		"constant": true,
+		"inputs": [],
+		"name": "getRequiredPermissions",
+		"outputs": [
+			{
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"payable": false,
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"constant": true,
 		"inputs": [
 			{
 				"name": "_serviceIndex",
