@@ -90,6 +90,7 @@ contract Institution is Ownable {
     }
 
 // -------------------------- Service Purchase ---------------------------------
+    function checkForAvailableServices(address _userAddr) public;
     
     function purchaseService(uint256 _serviceIndex)
       public payable;
@@ -97,7 +98,10 @@ contract Institution is Ownable {
 
 contract Insurance is Institution {
     
-// -------------------------- Basic Functions ---------------------------------
+// -------------------------- Basic Functions --------------------------------- 
+    function getBalance() public view onlyOwner returns(uint256){
+        return address(this).balance;
+    }
     
     function withdraw(uint256 _value) public onlyOwner {
         require(address(this).balance >= _value, "Insufficient fund");
