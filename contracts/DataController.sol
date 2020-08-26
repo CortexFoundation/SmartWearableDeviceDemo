@@ -85,7 +85,8 @@ contract DataController is Ownable {
     // the number of data & log category,temporarily is 3
     uint constant NUMCATE = 5;
     // time period the number of the block
-    uint constant PERIODBLOCK = 5;
+    //uint constant PERIODBLOCK = 5;
+    uint constant PERIODBLOCK = 20;  // test
     //number of intergate block statitic 
     uint constant DATABLOCK = 2;
 
