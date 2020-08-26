@@ -8,7 +8,7 @@ contract Institution is Ownable {
 // ---------------------------- Company Information ------------------------------
 
     string public companyName;
-    address public dataControllerAddress = 0x113aEb08b9c79bAc21B2737317d5B239b6843A52;
+    address public dataControllerAddress = 0xdb317E397CDcB8A9e9Cd70F06c981537b5258A69;
     
     function updateCompanyName(string _newName) public onlyOwner {
         companyName = _newName;

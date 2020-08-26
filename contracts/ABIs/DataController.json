@@ -73,15 +73,6 @@
 		"type": "function"
 	},
 	{
-		"constant": false,
-		"inputs": [],
-		"name": "statisticCollation",
-		"outputs": [],
-		"payable": false,
-		"stateMutability": "nonpayable",
-		"type": "function"
-	},
-	{
 		"constant": true,
 		"inputs": [
 			{
@@ -98,6 +89,15 @@
 		],
 		"payable": false,
 		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"constant": false,
+		"inputs": [],
+		"name": "deleteAccount",
+		"outputs": [],
+		"payable": false,
+		"stateMutability": "nonpayable",
 		"type": "function"
 	},
 	{
@@ -338,8 +338,27 @@
 	},
 	{
 		"constant": false,
-		"inputs": [],
-		"name": "removeOwnership",
+		"inputs": [
+			{
+				"name": "_index",
+				"type": "uint256"
+			}
+		],
+		"name": "integrateData",
+		"outputs": [],
+		"payable": false,
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"constant": false,
+		"inputs": [
+			{
+				"name": "num",
+				"type": "uint256"
+			}
+		],
+		"name": "uploadTestStatistic",
 		"outputs": [],
 		"payable": false,
 		"stateMutability": "nonpayable",
@@ -348,7 +367,7 @@
 	{
 		"constant": false,
 		"inputs": [],
-		"name": "deleteData",
+		"name": "removeOwnership",
 		"outputs": [],
 		"payable": false,
 		"stateMutability": "nonpayable",

@@ -4,7 +4,7 @@ import "./Institution.sol";
 import "./SafeMath.sol";
 import "./DataController.sol";
 
-// 0xe91f46e8d905a28baa2a81686af10489730aa1aa
+// 0xf7dbdb9aefc75912ab5f41d4431857a814b5a69b
 contract XiHongShiInsurance is Insurance {
     using SafeMath for uint;
     
@@ -28,12 +28,13 @@ contract XiHongShiInsurance is Insurance {
     }
     
     Service[] services;
-        
-    uint256[] public inputData;
+
+    mapping(address => uint256[]) inputs;
+    // uint256[] public inputData;
     
     constructor() public payable {
         companyName = "XiHongShi Insurance";
-        inputData = new uint256[](((28 * 28) + 31) >> 5 );
+        // inputData = new uint256[](((28 * 28) + 31) >> 5 );
         services.push(
             Service(
                 "Happiness", 
@@ -176,13 +177,14 @@ contract XiHongShiInsurance is Insurance {
         uint256[] memory infer_output = new uint256[](3);
         uint256 overallRisk = 0;
         uint256 dataCount = DataController(dataControllerAddress).getPersonDataLen(_userAddr);
-        if(USER_DATA_COUNT > dataCount){
+        if(USER_DATA_COUNT < dataCount){
             dataCount = USER_DATA_COUNT;
         }
         for(uint i = 0; i < dataCount; ++i){
+            // uint256[] memory inputData2 = getUserData2(_userAddr,1,i);
             // category 1: user data
             getUserData(_userAddr, 1, i);
-            inferArray(modelAddress, inputData, infer_output);
+            inferArray(modelAddress, inputs[_userAddr], infer_output);
             uint256 riskFactor = infer_output[0];
             uint256 riskIndex = 0;
             for(uint j = 1; j < RISK_LEVEL_COUNT; ++j){
@@ -203,27 +205,35 @@ contract XiHongShiInsurance is Insurance {
         availableServicesByUser[_userAddr] = availableServices;
     }
     
-    function getUserData(address _userAddr, uint _dataCategory, uint _index) internal {
-        inputData = DataController(dataControllerAddress).accessStatistic(
+    function getUserData(address _userAddr, uint _dataCategory, uint _index) internal{
+        inputs[_userAddr] = DataController(dataControllerAddress).accessStatistic(
             _userAddr, 
             _dataCategory, // data category, refer to data contract
             _index
         );
     }
     
-    function getUserReceipt(address _userAddr, uint _dataCategory, uint8 _index) internal {
-        inputData = DataController(dataControllerAddress).accessReceipt(
-            _userAddr, 
-            _dataCategory, // data category, refer to data contract
-            _index
-        );
-    }
+    // function getUserData(address _userAddr, uint _dataCategory, uint _index) internal {
+    //     inputData = DataController(dataControllerAddress).accessStatistic(
+    //         _userAddr, 
+    //         _dataCategory, // data category, refer to data contract
+    //         _index
+    //     );
+    // }
+    
+    // function getUserReceipt(address _userAddr, uint _dataCategory, uint8 _index) internal {
+    //     inputData = DataController(dataControllerAddress).accessReceipt(
+    //         _userAddr, 
+    //         _dataCategory, // data category, refer to data contract
+    //         _index
+    //     );
+    // }
     
     
     // --- purchase services --- 
     function purchaseService(uint256 _serviceIndex) public payable {
         require(
-            (availableServicesByUser[msg.sender] >> _serviceIndex & 1) == 1,
+            ((availableServicesByUser[msg.sender] >> _serviceIndex) & 1) == 1,
             "Not qualified"
             );
         require(msg.value >= services[_serviceIndex].fee, "Insufficient payment");
@@ -258,7 +268,7 @@ contract XiHongShiInsurance is Insurance {
         // 2: hospitial receipt, 0: last recorded receipt
         getUserData(_userAddr, 2, 0);
         uint256[] memory infer_output = new uint256[](3);
-        inferArray(modelAddress, inputData, infer_output);
+        inferArray(modelAddress, inputs[_userAddr], infer_output);
         uint256 riskFactor = infer_output[0];
         uint256 riskIndex = 0;
         for(uint i = 1; i < RISK_LEVEL_COUNT; ++i){
@@ -290,7 +300,7 @@ contract XiHongShiInsurance is Insurance {
     // --- debug section ---
     
     function debug_getUserData(address _userAddr, uint _dataCategory, uint _index) public onlyOwner {
-        inputData = DataController(dataControllerAddress).accessStatistic(
+        inputs[_userAddr] = DataController(dataControllerAddress).accessStatistic(
             _userAddr, 
             _dataCategory, // data category, refer to data contract
             _index
