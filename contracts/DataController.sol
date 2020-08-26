@@ -437,12 +437,12 @@ contract DataController is Ownable {
         //get the new cpmpression data
         for (uint i = 0; i < len; i += DATABLOCK) {
             if (i+1 >= len) {
-                personStatistics[cur] = personStatistics[i];
-                cur++;
+                personStatistics[cur]= personStatistics[i];
+            } else {
+                personStatistics[cur].startTs = personStatistics[i].startTs;
+                personStatistics[cur].stopTs = personStatistics[i+1].stopTs;
+                personStatistics[cur].encodedData = addStatistic(personStatistics[i].encodedData, personStatistics[i+1].encodedData);
             }
-            personStatistics[cur].startTs = personStatistics[i].startTs;
-            personStatistics[cur].stopTs = personStatistics[i+1].stopTs;
-            personStatistics[cur].encodedData = addStatistic(personStatistics[i].encodedData, personStatistics[i+1].encodedData);
             cur++;
         }
         //pop the other thing
