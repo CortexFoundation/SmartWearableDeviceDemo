@@ -136,8 +136,8 @@ contract DataController is Ownable {
         require(personInfo[_personAddr].exist, "personal not exist");
 
         License storage tmpLicense = personInfo[_personAddr].licenseList[msg.sender]; 
-        // One authorization only takes effect within 5 blocks
-        require(tmpLicense.existTime.add(PERIODBLOCK) > block.number,
+        // One authorization only takes effect within some blocks
+        require(block.number < tmpLicense.existTime.add(PERIODBLOCK),
           "is not allowed to accesss the data now!");
 
 
