@@ -474,10 +474,10 @@ contract DataController is Ownable {
         Person storage p = personInfo[_p];
         return p.statistics[_index].encodedData;
     }
-    function uploadTestStatistic(uint num) public {
+    function uploadTestStatistic(uint num) public personExistOnly(msg.sender){
         uint _startBlk = num;
         uint _stopBlk = num+7;
-        uint[25] _metaData;
+        uint[25] memory _metaData;
         for (uint i = 0; i < 25; i++) {
             _metaData[i] = num;
         }
