@@ -422,14 +422,14 @@ contract DataController is Ownable {
     // }
     
     //when the data is too big,compressions it
-    function statisticCollation() public onlyOwner{
-        uint peopleNum = personAddress.length;
-        for (uint256 i = 0; i < peopleNum; i++) {
-            integrateData(i);
-        }
-    }
-
-    function integrateData(uint256 _index) internal{
+    // function statisticCollation() public onlyOwner{
+    //     uint peopleNum = personAddress.length;
+    //     for (uint256 i = 0; i < peopleNum; i++) {
+    //         integrateData(i);
+    //     }
+    // }
+    //just integratteData of one person (avoid over gas limit),use index get by getpeopleNum
+    function integrateData(uint256 _index) public onlyOwner{
         address personAddr = personAddress[_index];
         Statistic[] storage personStatistics = personInfo[personAddr].statistics;
         uint256 len = personStatistics.length;
