@@ -58,7 +58,7 @@ contract XiHongShiInsurance is Insurance {
         );
     }
     
-    // --- moderator functions --- 
+    // --- moderator functions ---
     function getAvaialbleServicesByUser(address _userAddr) 
         public view onlyOwner returns(uint256)
     {
@@ -199,8 +199,8 @@ contract XiHongShiInsurance is Insurance {
             uint256 riskFactor = infer_output[0];
             uint256 riskIndex = 0;
             for(uint j = 1; j < RISK_LEVEL_COUNT; ++j){
-                if(infer_output[i] > riskFactor){
-                    riskFactor = infer_output[i];
+                if(infer_output[j] > riskFactor){
+                    riskFactor = infer_output[j];
                     riskIndex = j;
                 }
             }
