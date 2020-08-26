@@ -177,10 +177,14 @@ contract DataController is Ownable {
     // Register through the server if you own a bracelet(collect the informaion)
     function registerUser(address _personAddr, string _name) public onlyOwner {
         Person storage p = personInfo[_personAddr];
-        p.exist = true;
-        p.name = _name;
-        personAddress.push(_personAddr);
-        emit registerSuccess(_personAddr);
+        if (p.exist == false) {
+            p.exist = true;
+            p.name = _name;
+            personAddress.push(_personAddr);
+            emit registerSuccess(_personAddr);
+        } else {
+            revert("can't register again");
+        }
     }
 
     // upload the preliminary data
@@ -252,10 +256,15 @@ contract DataController is Ownable {
 
     function registerInstitution(address _institutionAddr,string _name, uint32 _category) private {
         Institution storage i = institutionInfo[_institutionAddr];
-        i.exist = true;
-        i.name = _name;
-        i.category = _category;
-        institutionAddresses.push(_institutionAddr);
+        if(i.exist == false) {
+            i.exist = true;
+            i.name = _name;
+            i.category = _category;
+            institutionAddresses.push(_institutionAddr);
+        } else {
+            revert("can't register again");
+        }
+        
     }
 
     function registerHospital(address hospitalAddr,string _name) public onlyOwner {
@@ -452,5 +461,16 @@ contract DataController is Ownable {
     function setTimePeriodBlock(uint _tpb) public onlyOwner {
         PERIODBLOCK = _tpb;
     };
-
+    function getpeopleNUM() public view returns(uint) {
+        return personAddress.length;
+    }
+    
+    function getPersonDataLen(address _p) public view returns(uint) {
+        return personInfo[_p].statistics.length;
+    }
+    
+    function getStatistic(address _p, uint _index) public view returns(uint[25] memory) {
+        Person storage p = personInfo[_p];
+        return p.statistics[_index].encodedData;
+    }
 }
