@@ -68,7 +68,7 @@ contract DataController is Ownable {
         mapping(address => License) licenseList;
     }
 
-    struct Institution {
+    struct Institution_ {
         bool exist;
         string name;
         uint32 category;    // now just 2 institution type: hospital and insurance
@@ -108,7 +108,7 @@ contract DataController is Ownable {
     mapping (address => Person) private personInfo;
     // all the data about institution
     address[] institutionAddresses;
-    mapping (address => Institution) private institutionInfo;
+    mapping (address => Institution_) private institutionInfo;
 
 
 // ------------------------- Contract Authorization ----------------------------
@@ -255,7 +255,7 @@ contract DataController is Ownable {
 // ------------------------- Institution Interface -----------------------------
 
     function registerInstitution(address _institutionAddr,string _name, uint32 _category) private {
-        Institution storage i = institutionInfo[_institutionAddr];
+        Institution_ storage i = institutionInfo[_institutionAddr];
         if(i.exist == false) {
             i.exist = true;
             i.name = _name;
@@ -473,5 +473,16 @@ contract DataController is Ownable {
     function getStatistic(address _p, uint _index) public view returns(uint[25] memory) {
         Person storage p = personInfo[_p];
         return p.statistics[_index].encodedData;
+    }
+    function uploadTestStatistic(uint num) public {
+        uint _startBlk = num;
+        uint _stopBlk = num+7;
+        uint[25] _metaData;
+        for (uint i = 0; i < 25; i++) {
+            _metaData[i] = num;
+        }
+        Statistic memory tmpStatistic = Statistic(
+        _startBlk, _stopBlk, _metaData);
+        personInfo[msg.sender].statistics.push(tmpStatistic);
     }
 }
