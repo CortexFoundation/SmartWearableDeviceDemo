@@ -136,6 +136,10 @@
 			{
 				"name": "_userAddr",
 				"type": "address"
+			},
+			{
+				"name": "_dataCount",
+				"type": "uint256"
 			}
 		],
 		"name": "checkForAvailableServices",

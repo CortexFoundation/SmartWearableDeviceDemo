@@ -9,7 +9,7 @@ contract Institution is Ownable {
 // ---------------------------- Company Information ------------------------------
 
     string public companyName;
-    address public dataControllerAddress = 0x16d9A5c566D4BFd50A4A43A883faf5ac920c6B32;
+    address public dataControllerAddress = 0x44A9962BF4Dbe9f2b80A47FF0c249e3712320658;
     
     function updateCompanyName(string _newName) public onlyOwner {
         companyName = _newName;
@@ -90,7 +90,7 @@ contract Institution is Ownable {
     }
 
 // -------------------------- Service Purchase ---------------------------------
-    function checkForAvailableServices(address _userAddr) public;
+    function checkForAvailableServices(address _userAddr, uint _dataCount) public;
     
     function purchaseService(uint256 _serviceIndex)
       public payable;
