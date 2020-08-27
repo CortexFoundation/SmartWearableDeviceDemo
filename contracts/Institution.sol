@@ -10,43 +10,31 @@ contract Institution is Ownable {
     string public companyName;
     address public dataControllerAddress = 0xdb317E397CDcB8A9e9Cd70F06c981537b5258A69;
     
+    // Only accessible by the contract moderator.
+    // For institution moderator to change it's company name.
     function updateCompanyName(string _newName) public onlyOwner {
         companyName = _newName;
     }
     
+    // Only accessible by the contract moderator.
+    // update to latest deployed DataController.sol's address.
     function updateDataControllerAddress(address _newAddr) public onlyOwner {
         dataControllerAddress = _newAddr;
     }
-
-    /**
-     * Data Authorization API
-     *
-     * The users' data will be permitted and accessible to an
-     *  organization or institution, instead of the specific service
-     *  in it. It's a straight-forward sense and simpilify the process
-     *  logic in the interaction between users' wearable devices and
-     *  the smart contract.
-     *
-     * @return uint:data category
-     *    The authorization levels of necessary data access for all
-     *    the services in this company.
-     **/
+     
+    // @return uint256: required permission for this institution in bitmap format.
     function getRequiredPermissions() public view returns(uint256);
 
-    // All the provided services of company.
+    // @return uint256: number of services provided by the institution.
     // Maximum list length : 256
     function getNumberOfServices()
         public view returns(uint256) ;
     
-    // Returns the specific service name and fee in the above
+    // @returns the specific service name and fee in the above
     //  provided service list corresponding with the parameter:
     //  `_serviceIndex`.
     function getService(uint8 _serviceIndex)
         public view returns(string, uint256);
-        
-    
-    // TODO(wlq): move the `registerInstitution` function into the general service
-    // function registerInstitution() public;
 
     // More details information about service, such as
     //  the insurance acknowledge, scheme, ... etc.
@@ -71,17 +59,19 @@ contract Institution is Ownable {
     mapping(address => uint256) availableServicesByUser;
     mapping(address => uint256) activeServicesByUser;
     
+    // used for checking whether a single service is active for a user
+    // @return bool: true for active, false for inactive
     function isServiceActive(uint8 _serviceIndex)
         public view returns(bool);
     
-    // all the active services that user has selected
+    // all the active services that user has selected in bitmap format
     function getActiveServices()
         public view returns(uint256)
     {
         return activeServicesByUser[msg.sender];
     }
     
-    // all the available services that user can choose
+    // all the available services that user can choose from in bitmap format
     function getAvailableServices()
         public view returns(uint256)
     {
@@ -89,8 +79,13 @@ contract Institution is Ownable {
     }
 
 // -------------------------- Service Purchase ---------------------------------
+    // Execute AI inference on users' physical data, 
+    // then update their available services based on it.
     function checkForAvailableServices(address _userAddr) public;
     
+    // Payable API
+    // users are able to purchase services that are available to them.
+    // Transaction fails if the user don't pay enough fee.
     function purchaseService(uint256 _serviceIndex)
       public payable;
 }
@@ -98,26 +93,33 @@ contract Institution is Ownable {
 contract Insurance is Institution {
     
 // -------------------------- Basic Functions --------------------------------- 
+    // Allow moderator to check contract's current balance.
     function getBalance() public view onlyOwner returns(uint256){
         return address(this).balance;
     }
     
+    // Allow moderator to withdraw fund from the contract.
+    // @Key: amount of fund for withdrawal
     function withdraw(uint256 _value) public onlyOwner {
         require(address(this).balance >= _value, "Insufficient fund");
         msg.sender.transfer(_value);
     }
     
+    // Allow moderator to withdraw remaining fund from the contract.
     function withdrawAll() public onlyOwner {
         require(address(this).balance > 0, "Insufficient fund");
         msg.sender.transfer(address(this).balance);
     }
     
+    // Payable API
+    // Allow moderator to deposit fund to the contract
     function deposit() public payable onlyOwner {
         require(msg.value > 0, "You have to deposit at least 1 unit of CTXC");
     }
 
 // -------------------------- Warranty Service ---------------------------------
-
+    // User API: redeem the insurance payment
+    // Condition: the user has purchased the service, and it's health condition is valid
     function payment(uint256 _serviceIndex) public;
 }
 

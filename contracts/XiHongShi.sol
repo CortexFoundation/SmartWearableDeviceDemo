@@ -9,20 +9,20 @@ contract XiHongShiInsurance is Insurance {
     using SafeMath for uint;
     
     address public modelAddress = 0xfc1488AaCB44f7E94C7FcC19E7684219673902AB;
-    
+    uint256 EXPONENTIAL = 10**18;
     uint8 public USER_DATA_COUNT = 10;
     // 0: low risk, 1: medium risk, 2: high risk
     uint8 public RISK_LEVEL_COUNT = 3;
     
-    // service structure for this insruance company.
+    // Service structure for this insruance company.
     // other companies might have different structures
     struct Service{
         string name;
         string statement;
         string notes;
         uint256 riskThreshold;
-        // This fee is limited to constant
-        // could be adjusted based on 
+        // This fee is set to constant for this demo only.
+        // Could be adjusted based on user's condition in future update.
         uint256 fee;
         uint256 payment;
     }
@@ -30,17 +30,15 @@ contract XiHongShiInsurance is Insurance {
     Service[] services;
 
     mapping(address => uint256[]) inputs;
-    // uint256[] public inputData;
     
     constructor() public payable {
         companyName = "XiHongShi Insurance";
-        // inputData = new uint256[](((28 * 28) + 31) >> 5 );
         services.push(
             Service(
                 "Happiness", 
                 "Cover some daily activities.",
                 "For older people",
-                5, 1, 10
+                5, 1 * EXPONENTIAL, 10 * EXPONENTIAL
             )
         );
         services.push(
@@ -48,7 +46,7 @@ contract XiHongShiInsurance is Insurance {
                 "Hardworking",  
                 "Cover most daily activities.",
                 "For mid age people", 
-                7, 2, 20
+                7, 2 * EXPONENTIAL, 20 * EXPONENTIAL
             )
         );
         services.push(
@@ -56,12 +54,13 @@ contract XiHongShiInsurance is Insurance {
                 "Excitement",  
                 "Cover extreme activities.",
                 "For younger people", 
-                15, 3, 30
+                15, 3 * EXPONENTIAL, 30 * EXPONENTIAL
             )
         );
     }
     
     // --- moderator functions ---
+    // Moderator functions to check it's users' data
     function getAvaialbleServicesByUser(address _userAddr) 
         public view onlyOwner returns(uint256)
     {
@@ -83,11 +82,7 @@ contract XiHongShiInsurance is Insurance {
         return false;
     }
     
-    // Deprecated: Register through application
-    // function registerInsurance() public onlyOwner {
-    //     DataController(dataControllerAddress).registerInstitution(companyName);
-    // }
-    
+    // Add new service to this institution.
     function addService(
         string _name, 
         string _statement,
@@ -102,6 +97,7 @@ contract XiHongShiInsurance is Insurance {
         services.push(Service(_name, _statement, _notes, _riskThreshold, _fee, _payment));
     }
     
+    // Update existing service for this institution
     function updateService(
         uint256 _index, 
         string _newName, 
@@ -122,6 +118,7 @@ contract XiHongShiInsurance is Insurance {
         services[_index].payment = _payment;
     }
     
+    // Delete existing service for this institution
     function removeService(uint256 _index) public onlyOwner {
         if(_index == services.length - 1) {
             delete services[services.length - 1];
@@ -134,6 +131,7 @@ contract XiHongShiInsurance is Insurance {
     }
     
     // --- getters --- 
+    // Getter implementations for this institution
     function getRequiredPermissions() public view returns(uint256){
         return 3;
     }
@@ -209,6 +207,8 @@ contract XiHongShiInsurance is Insurance {
         availableServicesByUser[_userAddr] = availableServices;
     }
     
+    // Access user's physical data from the DataController contract.
+    // Used for AI inference
     function getUserData(address _userAddr, uint _dataCategory, uint _index) internal{
         inputs[_userAddr] = DataController(dataControllerAddress).accessStatistic(
             _userAddr, 
@@ -217,29 +217,12 @@ contract XiHongShiInsurance is Insurance {
         );
     }
     
-    // function getUserData(address _userAddr, uint _dataCategory, uint _index) internal {
-    //     inputData = DataController(dataControllerAddress).accessStatistic(
-    //         _userAddr, 
-    //         _dataCategory, // data category, refer to data contract
-    //         _index
-    //     );
-    // }
-    
-    // function getUserReceipt(address _userAddr, uint _dataCategory, uint8 _index) internal {
-    //     inputData = DataController(dataControllerAddress).accessReceipt(
-    //         _userAddr, 
-    //         _dataCategory, // data category, refer to data contract
-    //         _index
-    //     );
-    // }
-    
-    
     // --- purchase services --- 
     function purchaseService(uint256 _serviceIndex) public payable {
         require(
             ((availableServicesByUser[msg.sender] >> _serviceIndex) & 1) == 1,
             "Not qualified"
-            );
+        );
         require(msg.value >= services[_serviceIndex].fee, "Insufficient payment");
         if(msg.value > services[_serviceIndex].fee){
             // refund excess payment
@@ -255,7 +238,16 @@ contract XiHongShiInsurance is Insurance {
         );
     }
     
-    function generateReceipt(address _userAddr, uint256 _serviceIndex) internal pure returns(uint256[25]){
+    // After user has successfully purchased a service, this institution will 
+    // write a receipt to the DataController contract as record
+    function generateReceipt(
+        address _userAddr, 
+        uint256 _serviceIndex
+    ) 
+        internal 
+        pure 
+        returns(uint256[25])
+    {
         uint256[25] memory receipt;
         receipt[0] = uint256(keccak256(_userAddr));
         for(uint8 i = 1; i < 25; ++i){
@@ -264,13 +256,13 @@ contract XiHongShiInsurance is Insurance {
         return receipt;
     }
     
-    // TODO: implement
-    // get data from data contract, used for insurance payment 
-    function checkCurrentHealthCondition(address _userAddr) public returns(bool){
+    // Use AI inference to check user's current health condition.
+    // used for insurance payment 
+    // @return bool: true for valid for payment, vice versa
+    function checkCurrentHealthCondition(address _userAddr) internal returns(bool){
         // For this demo, we are using user's data for checking user's health condition
         // in the future, it would require receipt from the hospital/other institutions
-        // 2: hospitial receipt, 0: last recorded receipt
-        getUserData(_userAddr, 2, 0);
+        getUserData(_userAddr, 1, 0);
         uint256[] memory infer_output = new uint256[](3);
         inferArray(modelAddress, inputs[_userAddr], infer_output);
         uint256 riskFactor = infer_output[0];
@@ -297,6 +289,9 @@ contract XiHongShiInsurance is Insurance {
             );
             msg.sender.transfer(services[_serviceIndex].payment);
         }
+        else{
+            revert();
+        }
         activeServicesByUser[msg.sender] = 
             activeServicesByUser[msg.sender] ^ (1 << _serviceIndex);
     }
@@ -310,37 +305,4 @@ contract XiHongShiInsurance is Insurance {
             _index
         );
     }
-    // function debug_activateAllServiceForUser(address _userAddr) public onlyOwner {
-    //     availableServicesByUser[_userAddr] = 0xfffffff;
-    // }
-    
-    // function debug_deactivateAllServiceForUser(address _userAddr) public onlyOwner {
-    //     availableServicesByUser[_userAddr] = 0;
-    // }
-    
-    // function debug_purchaseServiceForUser3(address _userAddr, uint256 _serviceIndex) public onlyOwner payable{
-    //     require(
-    //         (availableServicesByUser[_userAddr] >> _serviceIndex & 1) == 1,
-    //         "Not qualified"
-    //         );
-    //     require(msg.value >= services[_serviceIndex].fee, "Insufficient payment");
-    //     if(msg.value > services[_serviceIndex].fee){
-    //         // refund excess payment
-    //         _userAddr.transfer(msg.value - services[_serviceIndex].fee);
-    //     }
-    // }
-    
-    // function debug_purchaseServiceForUser4(address _userAddr, uint256 _serviceIndex) public onlyOwner payable{
-    //     require(
-    //         (availableServicesByUser[_userAddr] >> _serviceIndex & 1) == 1,
-    //         "Not qualified"
-    //         );
-    //     require(msg.value >= services[_serviceIndex].fee, "Insufficient payment");
-    //     if(msg.value > services[_serviceIndex].fee){
-    //         // refund excess payment
-    //         _userAddr.transfer(msg.value - services[_serviceIndex].fee);
-    //     }
-    //     activeServicesByUser[_userAddr] = 
-    //         activeServicesByUser[_userAddr] | (1 << _serviceIndex);
-    // }
 }
