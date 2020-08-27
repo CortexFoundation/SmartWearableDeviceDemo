@@ -77,7 +77,7 @@ contract XiHongShiInsurance is Insurance {
     function isServiceActiveByUser(address _userAddr, uint256 _serviceIndex) 
         public view onlyOwner returns(bool)
     {
-        if ((availableServicesByUser[_userAddr] >> _serviceIndex & 1) == 1) {
+        if ((activeServicesByUser[_userAddr] >> _serviceIndex & 1) == 1) {
             return true;
         }
         return false;
