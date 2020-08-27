@@ -9,14 +9,13 @@ contract XiHongShiInsurance is Insurance {
     using SafeMath for uint;
     
     address public modelAddress = 0xfc1488AaCB44f7E94C7FcC19E7684219673902AB;
-    uint256 EXPONENTIAL = 10**18;
     uint8 public USER_DATA_COUNT = 10;
     // 0: low risk, 1: medium risk, 2: high risk
     uint8 public RISK_LEVEL_COUNT = 3;
     
     // Service structure for this insruance company.
     // other companies might have different structures
-    struct Service{
+    struct Service {
         string name;
         string statement;
         string notes;
@@ -30,6 +29,8 @@ contract XiHongShiInsurance is Insurance {
     Service[] services;
 
     mapping(address => uint256[]) inputs;
+
+    uint256 EXPONENTIAL = 10**18;
     
     constructor() public payable {
         companyName = "XiHongShi Insurance";
@@ -76,7 +77,7 @@ contract XiHongShiInsurance is Insurance {
     function isServiceActiveByUser(address _userAddr, uint256 _serviceIndex) 
         public view onlyOwner returns(bool)
     {
-        if((availableServicesByUser[_userAddr] >> _serviceIndex & 1) == 1){
+        if ((availableServicesByUser[_userAddr] >> _serviceIndex & 1) == 1) {
             return true;
         }
         return false;
@@ -120,7 +121,7 @@ contract XiHongShiInsurance is Insurance {
     
     // Delete existing service for this institution
     function removeService(uint256 _index) public onlyOwner {
-        if(_index == services.length - 1) {
+        if (_index == services.length - 1) {
             delete services[services.length - 1];
             --services.length;
             return;
@@ -132,7 +133,7 @@ contract XiHongShiInsurance is Insurance {
     
     // --- getters --- 
     // Below are the getter implementations for this institution
-    function getRequiredPermissions() public view returns(uint256){
+    function getRequiredPermissions() public view returns(uint256) {
         return 3;
     }
     
@@ -149,7 +150,7 @@ contract XiHongShiInsurance is Insurance {
     function isServiceActive(uint8 _serviceIndex) 
         public view returns(bool)
     {
-        if((availableServicesByUser[msg.sender] >> _serviceIndex & 1) == 1){
+        if ((availableServicesByUser[msg.sender] >> _serviceIndex & 1) == 1) {
             return true;
         }
         return false;
@@ -184,18 +185,18 @@ contract XiHongShiInsurance is Insurance {
         uint256[] memory infer_output = new uint256[](3);
         uint256 overallRisk = 0;
         uint256 dataCount = DataController(dataControllerAddress).getPersonDataLen(_userAddr);
-        if(USER_DATA_COUNT < dataCount){
+        if (USER_DATA_COUNT < dataCount) {
             dataCount = USER_DATA_COUNT;
         }
-        for(uint i = 0; i < dataCount; ++i){
+        for (uint i = 0; i < dataCount; ++i) {
             // uint256[] memory inputData2 = getUserData2(_userAddr,1,i);
             // category 1: user data
             getUserData(_userAddr, i);
             inferArray(modelAddress, inputs[_userAddr], infer_output);
             uint256 riskFactor = infer_output[0];
             uint256 riskIndex = 0;
-            for(uint j = 1; j < RISK_LEVEL_COUNT; ++j){
-                if(infer_output[j] > riskFactor){
+            for (uint j = 1; j < RISK_LEVEL_COUNT; ++j) {
+                if (infer_output[j] > riskFactor) {
                     riskFactor = infer_output[j];
                     riskIndex = j;
                 }
@@ -204,8 +205,8 @@ contract XiHongShiInsurance is Insurance {
         }
         // evaluating the risk:
         uint256 availableServices = 0;
-        for(i = 0; i < services.length; ++i){
-            if(services[i].riskThreshold >= overallRisk){
+        for (i = 0; i < services.length; ++i) {
+            if (services[i].riskThreshold >= overallRisk) {
                 availableServices = availableServices | (1 << i);
             }
         }
@@ -228,8 +229,12 @@ contract XiHongShiInsurance is Insurance {
             ((availableServicesByUser[msg.sender] >> _serviceIndex) & 1) == 1,
             "Not qualified"
         );
+        require(
+            isServiceActiveByUser(msg.sender, _serviceIndex) == false,
+            "already purchased"
+        );
         require(msg.value >= services[_serviceIndex].fee, "Insufficient payment");
-        if(msg.value > services[_serviceIndex].fee){
+        if (msg.value > services[_serviceIndex].fee) {
             // refund excess payment
             msg.sender.transfer(msg.value - services[_serviceIndex].fee);
         }
@@ -254,7 +259,7 @@ contract XiHongShiInsurance is Insurance {
     {
         uint256[25] memory receipt;
         receipt[0] = uint256(keccak256(_userAddr));
-        for(uint8 i = 1; i < 25; ++i){
+        for (uint8 i = 1; i < 25; ++i) {
             receipt[i] = receipt[i - 1] + _serviceIndex;
         }
         return receipt;
@@ -263,7 +268,7 @@ contract XiHongShiInsurance is Insurance {
     // Use AI inference to check user's current health condition.
     // used for insurance payment 
     // @return bool: true for valid for payment, vice versa
-    function checkCurrentHealthCondition(address _userAddr) internal returns(bool){
+    function checkCurrentHealthCondition(address _userAddr) internal returns(bool) {
         // For this demo, we are using user's data for checking user's health condition
         // in the future, it would require receipt from the hospital/other institutions
         getUserData(_userAddr, 0);
@@ -271,13 +276,13 @@ contract XiHongShiInsurance is Insurance {
         inferArray(modelAddress, inputs[_userAddr], infer_output);
         uint256 riskFactor = infer_output[0];
         uint256 riskIndex = 0;
-        for(uint i = 1; i < RISK_LEVEL_COUNT; ++i){
-            if(infer_output[i] > riskFactor){
+        for (uint i = 1; i < RISK_LEVEL_COUNT; ++i) {
+            if (infer_output[i] > riskFactor) {
                 riskFactor = infer_output[i];
                 riskIndex = i;
             }
         }
-        if(riskIndex == 0){
+        if (riskIndex == 0) {
             return true;
         }
         return false;
@@ -285,18 +290,14 @@ contract XiHongShiInsurance is Insurance {
     
     // Function implementation for this institution
     function payment(uint256 _serviceIndex) public {
-        require(checkCurrentHealthCondition(msg.sender), 
+        require(isServiceActiveByUser(msg.sender, _serviceIndex),
+            "have not purchased service");
+        require(checkCurrentHealthCondition(msg.sender),
             "User health condition not valid for payment");
-        if(isServiceActiveByUser(msg.sender, _serviceIndex)){
-            require(
-                address(this).balance >= services[_serviceIndex].payment, 
-                "Insufficient fund"
-            );
-            msg.sender.transfer(services[_serviceIndex].payment);
-        }
-        else{
-            revert();
-        }
+        require(address(this).balance >= services[_serviceIndex].payment, 
+            "Insufficient fund");
+
+        msg.sender.transfer(services[_serviceIndex].payment);
         activeServicesByUser[msg.sender] = 
             activeServicesByUser[msg.sender] ^ (1 << _serviceIndex);
     }
