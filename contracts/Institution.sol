@@ -6,7 +6,7 @@ contract Institution is Ownable {
     
 // ---------------------------- Company Information ------------------------------
     string public companyName;
-    address public dataControllerAddress = 0x2ac5eb61288c47297e4c7d64249ee5310dc8dccb;
+    address public dataControllerAddress = 0xeEf1D0a9D50C98d715CF6Dd045fd14fd7f324c98;
     
     // Only accessible by the contract moderator.
     // For institution moderator to change it's company name.
@@ -38,10 +38,12 @@ contract Institution is Ownable {
     //  the insurance acknowledge, scheme, ... etc.
     function getServiceInformation(uint8 _serviceIndex)
         public view returns(
-          string, // service name
+          string,  // service name
+          string,  // statement
+          string,  // service notes
+          uint256, // riskThreshold
           uint256, // service fee
-          string, // service description
-          string // service notes
+          uint256  // payment
         );
 
 // --------------------------- Personal Services ------------------------------

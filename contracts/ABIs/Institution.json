@@ -239,15 +239,23 @@
 			},
 			{
 				"name": "",
+				"type": "string"
+			},
+			{
+				"name": "",
+				"type": "string"
+			},
+			{
+				"name": "",
 				"type": "uint256"
 			},
 			{
 				"name": "",
-				"type": "string"
+				"type": "uint256"
 			},
 			{
 				"name": "",
-				"type": "string"
+				"type": "uint256"
 			}
 		],
 		"payable": false,

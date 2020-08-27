@@ -4,7 +4,7 @@ import "./Institution.sol";
 import "./SafeMath.sol";
 import "./DataController.sol";
 
-// 0x319d38112bd650457534c2bdc386e2d3e4045afd
+// 0xb3643de74ad45387cd92320508ea6efd87d5de43
 contract XiHongShiInsurance is Insurance {
     using SafeMath for uint;
     
@@ -159,17 +159,21 @@ contract XiHongShiInsurance is Insurance {
         public 
         view 
         returns(
-            string, // service name
+            string,  // service name
+            string,  // statement
+            string,  // notes
+            uint256, // riskThreshold
             uint256, // service fee
-            string, // service description
-            string // service notes
+            uint256  // payment
         )
     {
         return (
             services[_serviceIndex].name, 
-            services[_serviceIndex].fee,
             services[_serviceIndex].statement,
-            services[_serviceIndex].notes
+            services[_serviceIndex].notes,
+            services[_serviceIndex].riskThreshold,
+            services[_serviceIndex].fee,
+            services[_serviceIndex].payment
         );
     }
     
