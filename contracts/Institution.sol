@@ -34,18 +34,6 @@ contract Institution is Ownable {
     function getService(uint8 _serviceIndex)
         public view returns(string, uint256);
 
-    // More details information about service, such as
-    //  the insurance acknowledge, scheme, ... etc.
-    function getServiceInformation(uint8 _serviceIndex)
-        public view returns(
-          string,  // service name
-          string,  // statement
-          string,  // service notes
-          uint256, // riskThreshold
-          uint256, // service fee
-          uint256  // payment
-        );
-
 // --------------------------- Personal Services ------------------------------
 
     /**
@@ -93,6 +81,19 @@ contract Institution is Ownable {
 contract Insurance is Institution {
     
 // -------------------------- Basic Functions --------------------------------- 
+
+    // More details information about service, such as
+    //  the insurance statement, notes, ... etc.
+    function getServiceInformation(uint8 _serviceIndex)
+        public view returns(
+          string,  // service name
+          string,  // statement
+          string,  // service notes
+          uint256, // riskThreshold
+          uint256, // service fee
+          uint256  // payment
+        );
+
     // Allow moderator to check contract's current balance.
     function getBalance() public view onlyOwner returns(uint256){
         return address(this).balance;

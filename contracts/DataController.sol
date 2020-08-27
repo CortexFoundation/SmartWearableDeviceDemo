@@ -2,14 +2,13 @@
 
 pragma solidity ^0.4.24;
 
-import "./Ownable.sol";
+import "./Panel.sol";
 import "./SafeMath.sol";
 import "./Institution.sol";
 
-// 0x113aEb08b9c79bAc21B2737317d5B239b6843A52
-contract DataController is Ownable {
+// deployed address: 0xeEf1D0a9D50C98d715CF6Dd045fd14fd7f324c98
+contract DataController is Panel {
     using SafeMath for uint256;
-    uint256 INT_MAX = 2**256 - 1;
 
 // -------------------------- Pre-defined Structure ----------------------------
 
@@ -137,6 +136,7 @@ contract DataController is Ownable {
             personInfo[_personAddr].exist, 
             "personal not exist"
         );
+
         // get the license of the institution to the person 
         License storage tmpLicense = personInfo[_personAddr].licenseList[msg.sender];
 
@@ -154,6 +154,40 @@ contract DataController is Ownable {
 
         _;
     }
+
+// ----------------------------- Admin Interface -------------------------------
+
+    function registerUser(address _personAddr, string _name) public onlyOwner {
+        Person storage p = personInfo[_personAddr];
+        // one person id can just register for once
+        if (p.exist == false) {
+            p.exist = true;
+            p.name = _name;
+            personAddress.push(_personAddr);
+            emit registerPersonSuccess(_personAddr);
+        } else {
+            revert("Already registered");
+        }
+    }
+
+    function registerHospital(address _hospitalAddr, string _name) 
+        public onlyOwner
+    {
+        registerInstitution(_hospitalAddr, _name, 0);
+    }
+
+    function registerInsurance(address _insuranceAddr, string _name) 
+        public onlyOwner
+    {
+        registerInstitution(_insuranceAddr, _name, 1);
+    }
+
+    function registerAdvertisement(address _advertisementAddr, string _name)
+        public onlyOwner
+    {
+        registerInstitution(_advertisementAddr, _name, 2);
+    }
+
 
 // ----------------------------- User Interface --------------------------------
 
@@ -178,20 +212,6 @@ contract DataController is Ownable {
      *  pre-set name.
      **/
 
-    // Register through the server if you own a wearable devices(collect the informaion)
-    function registerUser(address _personAddr, string _name) public onlyOwner {
-        Person storage p = personInfo[_personAddr];
-        // one person id can just register for once
-        if (p.exist == false) {
-            p.exist = true;
-            p.name = _name;
-            personAddress.push(_personAddr);
-            emit registerPersonSuccess(_personAddr);
-        } else {
-            revert("Already registered");
-        }
-    }
-
     // upload the statistic collected through wearable devices
     function uploadData(
         uint[25] _metaData, 
@@ -212,10 +232,11 @@ contract DataController is Ownable {
      * We design the autorization with a period of time, instead of
      *  the number of calls. And the personal body features will
      *  be registered with different address and the same name.
+     *
+     * @param _institutionId the adress of institution which is authorized to
+     * @param _auth what kind of permission (eg. 11111 - all the data &log could access)
      * 
      **/
-    /// @param _institutionId the adress of institution which is authorized to
-    /// @param _auth what kind of permission (eg. 11111 - all the data &log could access)
     function userAuthorization(address _institutionId, uint _auth) 
         public
         personExistOnly(msg.sender)
@@ -248,21 +269,151 @@ contract DataController is Ownable {
       return institutionAddresses.length;
     }
 
-    function getInstitution(uint256 _institutionIndex) public view returns(address)
+    function getInstitution(uint256 _institutionIndex)
+        public view returns(address, uint32)
     {
-      return institutionAddresses[_institutionIndex];
+      address addr = institutionAddresses[_institutionIndex];
+      return (addr, institutionInfo[addr].category);
     }
 
 // ------------------------- Institution Interface -----------------------------
+    
+    /**
+     * The receipt is encoded in the rules we have set up.
+     *
+     * @dev save the receipt get from the institution to the person's data
+     * @param _personAddr who is the owner of the receipt
+     * @param _timestamp the receipt generated time
+     * @param _receiptData the encoded receipt data
+     **/
+    function saveReceipt(
+        address _personAddr,
+        uint256 _timestamp,
+        uint256[25] _receiptData
+    )
+        public
+        institutionRegistered
+    {
+        Receipt memory tmpReceipt = Receipt(_timestamp, _receiptData);
+        if (institutionInfo[msg.sender].category == uint32(0)) {
+            personInfo[_personAddr].hospitalReceipts.push(tmpReceipt);
+        } else if(institutionInfo[msg.sender].category == uint32(1)) {
+            personInfo[_personAddr].insuranceReceipts.push(tmpReceipt);
+        }else {
+            revert("unexpected institution category(0 : hospital,1 : insurance).");
+        }
+    }
+
+    //get the specefic person's statistic length
+    function getPersonDataLen(address _personAddr)
+        public view returns(uint256) {
+        return personInfo[_personAddr].statistics.length;
+    }
+
+    // get the body feature statistics.
+    function accessStatistic(address _personAddr, uint _index)
+        public 
+        withPermit(_personAddr, STATISTIC)
+        returns(uint256[25])
+    {
+        Statistic[] storage tmpStatistics = personInfo[_personAddr].statistics;
+        uint len = tmpStatistics.length;
+        require(_index < len, "data index out of bound");
+
+        recordDataAccess(STATISTIC, _personAddr);
+        // get the latest data, if index = 0, get the data at len-1;
+        return tmpStatistics[len-1-_index].encodedData;
+    }
 
     /**
-      * every institution has its own contract to provide service to people,if they want to
-      * use user data to make some judgments & provide services,they should register in the 
-      * dataContrllor to get permission first.
+     * Log access API for institution contract, just get one record log once time
+     * by the index,and should get the index range by the get the number of person's log
+     *
+     * @param _personAddr the person address
+     * @param _dataCategory the category of the data to access, technically 2 : MEDICALLOG & INSURANCELOG
+     * @param _index the index of the receipt that want to access in a person's receipt arrary
      */
-    /// @param _institutionAddr the contract address of the institution
-    /// @param _name the name of the institution
-    /// @param _category what kind of institution is this 
+    function accessLog(
+        address _personAddr,
+        uint _dataCategory,
+        uint _index
+    ) 
+        public
+        withPermit(_personAddr, _dataCategory)
+        returns(
+            string memory, 
+            uint256
+        )
+    {
+        Log[] memory tmpLogs;
+        uint256 len;
+
+        if (institutionInfo[msg.sender].category == 0) {
+            recordDataAccess(MEDICALLOG, _personAddr);
+            tmpLogs = personInfo[_personAddr].hospitalLogs;
+            len = tmpLogs.length;
+        } else if (institutionInfo[msg.sender].category == 1) {
+            recordDataAccess(INSURANCELOG, _personAddr);
+            tmpLogs = personInfo[_personAddr].insuranceLogs;
+            len = tmpLogs.length;
+        } else {
+            revert("not supported");
+        }
+
+        require(_index < len, "log index out of bound");
+        return (tmpLogs[len-1-_index].institutionName, tmpLogs[len-1-_index].cate);
+    }
+
+    /**
+     * receipt access API for institution contract, just get one record receipt once time
+     * by the index,and should get the index range by the get the number of person's receipt
+     * @param _personAddr the person address
+     * @param _dataCategory the category of the data to access,technically 2 : MEDICALRECEIPT & INSURANCERECEIPT
+     * @param _index the index of the receipt that want to access in a person's receipt arrary
+     */
+    function accessReceipt(
+        address _personAddr,
+        uint256 _dataCategory,
+        uint256 _index
+    )
+        public
+        withPermit(_personAddr, _dataCategory)
+        returns(uint256[25])
+    {
+        Receipt[] memory tmpReceipts;
+        uint256 len;
+
+        if (institutionInfo[msg.sender].category == 0) {
+            tmpReceipts = personInfo[_personAddr].hospitalReceipts;
+            len = tmpReceipts.length;
+
+            require(_index < len, "receipt index out of bound");
+            recordDataAccess(MEDICALRECEIPT, _personAddr);
+            return tmpReceipts[len-1-_index].encodedData;
+        } else if (institutionInfo[msg.sender].category == 1) {
+            tmpReceipts = personInfo[_personAddr].insuranceReceipts;
+            len = tmpReceipts.length;
+
+            require(_index < len, "receipt index out of bound");
+            recordDataAccess(INSURANCERECEIPT, _personAddr);
+            return tmpReceipts[len-1-_index].encodedData;
+        } else {
+            revert("not supported");
+        }
+    }
+
+
+// ---------------------------- Helper Functions -------------------------------
+
+    /**
+     * Every institution has its own contract to provide service to people,if they want to
+     *  use user data to make some judgments & provide services, they should register in the 
+     *  dataContrllor to get permission first.
+     *
+     * @param _institutionAddr the contract address of the institution
+     * @param _name the name of the institution
+     * @param _category what kind of institution is this 
+     **/
     function registerInstitution(
         address _institutionAddr,
         string _name, 
@@ -282,157 +433,14 @@ contract DataController is Ownable {
         }
         
     }
-    //register a hospital organization
-    function registerHospital(address _hospitalAddr,string _name) 
-        public
-        onlyOwner
-    {
-        registerInstitution(_hospitalAddr,_name, 0);
-    }
-
-    function registerInsurance(address _insuranceAddr,string _name) 
-        public
-        onlyOwner
-    {
-        registerInstitution(_insuranceAddr,_name, 1);
-    }
-
-    function registerAdvertisement(address _advertisementAddr,string _name)
-        public
-        onlyOwner
-    {
-        registerInstitution(_advertisementAddr,_name, 2);
-    }
-    
-    
-    // the receipt is encoded in the rules we have set up.
-    /// @dev save the receipt get from the institution to the person's data
-    /// @param _personAddr who is the owner of the receipt
-    /// @param _timestamp the receipt generated time
-    /// @param _receiptData the encoded receipt data
-    function saveReceipt(
-        address _personAddr,
-        uint _timestamp,
-        uint256[25] _receiptData
-    )
-        public
-        institutionRegistered
-    {
-        Receipt memory tmpReceipt = Receipt(_timestamp, _receiptData);
-        if (institutionInfo[msg.sender].category == uint32(0)) {
-            personInfo[_personAddr].hospitalReceipts.push(tmpReceipt);
-        } else if(institutionInfo[msg.sender].category == uint32(1)) {
-            personInfo[_personAddr].insuranceReceipts.push(tmpReceipt);
-        }else {
-            revert("unexpected institution category(0 : hospital,1 : insurance).");
-        }
-    }
-
-    //get the specefic person's statistic length
-    function getPersonDataLen(address _personAddr) public view returns(uint) {
-        return personInfo[_personAddr].statistics.length;
-    }
-
-    // get the body feature statistics.
-    function accessStatistic(address _personAddr,uint _index)
-        public 
-        view 
-        withPermit(_personAddr, STATISTIC)
-        returns(uint256[25])
-    {
-        Statistic[] storage tmpStatistics = personInfo[_personAddr].statistics;
-        uint len = tmpStatistics.length;
-        require(_index < len, "data index out of bound");
-        // get the latest data, if index = 0, get the data at len-1;
-        return tmpStatistics[len-1-_index].encodedData;
-    }
-
-    /**
-     * receipt access API for institution contract, just get one record log once time
-     * by the index,and should get the index range by the get the number of person's log
-     * @param _personAddr the person address
-     * @param _dataCategory the category of the data to access, technically 2 : MEDICALLOG & INSURANCELOG
-     * @param _index the index of the receipt that want to access in a person's receipt arrary
-     */
-    function accessLog(
-        address _personAddr,
-        uint _dataCategory,
-        uint _index
-    ) 
-        public
-        withPermit(_personAddr, _dataCategory) 
-        returns(
-            string memory, 
-            uint256
-        )
-    {
-        Log[] memory tmpLogs;
-        uint len;
-
-        if (institutionInfo[msg.sender].category == 0) {
-            recordDataAcess(MEDICALLOG,_personAddr);
-            tmpLogs = personInfo[_personAddr].hospitalLogs;
-            len = tmpLogs.length;
-        } else if (institutionInfo[msg.sender].category == 1) {
-            recordDataAcess(INSURANCELOG,_personAddr);
-            tmpLogs = personInfo[_personAddr].insuranceLogs;
-            len = tmpLogs.length;
-        } else {
-            revert("not supported");
-        }
-
-        require(_index < len, "data index out of bound");
-        return (tmpLogs[len-1-_index].institutionName, tmpLogs[len-1-_index].cate);
-    }
-
-    /**
-     * receipt access API for institution contract, just get one record receipt once time
-     * by the index,and should get the index range by the get the number of person's receipt
-     * @param _personAddr the person address
-     * @param _dataCategory the category of the data to access,technically 2 : MEDICALRECEIPT & INSURANCERECEIPT
-     * @param _index the index of the receipt that want to access in a person's receipt arrary
-     */
-    function accessReceipt(
-        address _personAddr,
-        uint _dataCategory,
-        uint _index
-    )
-        public
-        withPermit(_personAddr, _dataCategory)
-        returns(uint256[25])
-    {
-        Receipt[] memory tmpReceipts;
-        uint len;
-        //
-        if (institutionInfo[msg.sender].category == 0) {
-            recordDataAcess(MEDICALRECEIPT,_personAddr);
-            tmpReceipts = personInfo[_personAddr].hospitalReceipts;
-            len = tmpReceipts.length;
-        } else if (institutionInfo[msg.sender].category == 1) {
-            recordDataAcess(INSURANCERECEIPT,_personAddr);
-            tmpReceipts = personInfo[_personAddr].insuranceReceipts;
-            len = tmpReceipts.length;
-        } else {
-            revert("not supported");
-        }
-
-        require(_index < len, "data index out of bound");
-        return tmpReceipts[len-1-_index].encodedData;
-    }
-
-
-// ---------------------------- Helper Functions -------------------------------
 
     // Cancel authorization of all category data access for institution
     function deauthorize(address _institutionId) internal {
         delete personInfo[msg.sender].licenseList[_institutionId];
-        // License storage tmpLicense = personInfo[msg.sender].licenseList[_institutionId];
-        // tmpLicense.permission = _au;
-        // tmpLicense.existTime = INT_MAX.sub(PERIODBLOCK);
     }
 
     // record the data access,and put it into the corresponding log
-    function recordDataAcess(uint256 _dataCategory, address _personAddr) internal {
+    function recordDataAccess(uint256 _dataCategory, address _personAddr) internal {
         Log memory tmpLog;
         tmpLog.cate = _dataCategory;
         tmpLog.institutionName = institutionInfo[msg.sender].name;
@@ -448,26 +456,23 @@ contract DataController is Ownable {
         }
     }
 
-    /**
-     * when statistic is too much, we will try to integrate data of the specefic person one
-     * by one, not choose to integrate all the person's data to avoid over the gas limit of
-     * the block
-     * @param _index to indicate which person to deal with in the personAddress 
-     */
     function integrateData(uint256 _index) public onlyOwner{
         address personAddr = personAddress[_index];
         Statistic[] storage personStatistics = personInfo[personAddr].statistics;
         uint256 len = personStatistics.length;
         uint256 cur = 0;
         //get the new compression data,wo simply integrate 2 items into 1
-        for (uint i = 0; i < len; i += DATABLOCK) {
+        for (uint256 i = 0; i < len; i += DATABLOCK) {
             // if the number is add, Use directly the last statistic
-            if (i+1 >= len) {
+            if (i + 1 >= len) {
                 personStatistics[cur]= personStatistics[i];
             } else {
                 personStatistics[cur].startTs = personStatistics[i].startTs;
                 personStatistics[cur].stopTs = personStatistics[i+1].stopTs;
-                personStatistics[cur].encodedData = addStatistic(personStatistics[i].encodedData, personStatistics[i+1].encodedData);
+                personStatistics[cur].encodedData = addStatistic(
+                    personStatistics[i].encodedData,
+                    personStatistics[i+1].encodedData
+                );
             }
             cur++;
         }
@@ -476,10 +481,12 @@ contract DataController is Ownable {
     }
 
     //how to deal with 2 statistic, now just average them
-    function addStatistic(uint256[25] storage _meta1, uint256[25] storage _meta2) internal view returns(uint256[25]) {
+    function addStatistic(uint256[25] storage _meta1, uint256[25] storage _meta2)
+        internal view returns(uint256[25])
+    {
         uint256[25] memory tmpData;
-        for (uint i = 0 ; i < 25; i++) {
-            tmpData[i] = (_meta1[i] + _meta2[i])/2;
+        for (uint256 i = 0 ; i < 25; i++) {
+            tmpData[i] = (_meta1[i] + _meta2[i]) / 2;
         }
         return tmpData;
     }
