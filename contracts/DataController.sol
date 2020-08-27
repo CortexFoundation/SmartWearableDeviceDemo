@@ -228,7 +228,7 @@ contract DataController is Ownable {
     // user cacel the permission of the data access manually.
     function userDeauthorization(address _institutionId) public personExistOnly(msg.sender)
     {
-        deauthorize(_institutionId,0); // 00000 cacel all the data permission
+        deauthorize(_institutionId); // 00000 cacel all the data permission
     }
     
     // user delete his own account
@@ -294,7 +294,7 @@ contract DataController is Ownable {
         public
         onlyOwner
     {
-        registerInstitution(insuranceAddr,_name, 1);
+        registerInstitution(_insuranceAddr,_name, 1);
     }
 
     function registerAdvertisement(address _advertisementAddr,string _name)
@@ -356,7 +356,10 @@ contract DataController is Ownable {
     ) 
         public
         withPermit(_personAddr, _dataCategory) 
-        returns(uint256[25])
+        returns(
+            string memory, 
+            uint256
+        )
     {
         Log[] memory tmpLogs;
         uint len;
@@ -368,13 +371,13 @@ contract DataController is Ownable {
         } else if (institutionInfo[msg.sender].category == 1) {
             recordDataAcess(INSURANCELOG,_personAddr);
             tmpLogs = personInfo[_personAddr].insuranceLogs;
-            len = tmpReceipts.length;
+            len = tmpLogs.length;
         } else {
             revert("not supported");
         }
 
         require(_index < len, "data index out of bound");
-        return tmpLogs[len-1-_index].encodedData;
+        return (tmpLogs[len-1-_index].institutionName, tmpLogs[len-1-_index].cate);
     }
 
     /**
