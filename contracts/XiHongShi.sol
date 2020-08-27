@@ -4,7 +4,7 @@ import "./Institution.sol";
 import "./SafeMath.sol";
 import "./DataController.sol";
 
-// 0xf7dbdb9aefc75912ab5f41d4431857a814b5a69b
+// 0x319d38112bd650457534c2bdc386e2d3e4045afd
 contract XiHongShiInsurance is Insurance {
     using SafeMath for uint;
     
@@ -131,7 +131,7 @@ contract XiHongShiInsurance is Insurance {
     }
     
     // --- getters --- 
-    // Getter implementations for this institution
+    // Below are the getter implementations for this institution
     function getRequiredPermissions() public view returns(uint256){
         return 3;
     }
@@ -174,6 +174,7 @@ contract XiHongShiInsurance is Insurance {
     }
     
     // --- service AI inferences --- 
+    // Function implementation for this institution
     function checkForAvailableServices(address _userAddr) public {
         // infer risk factor based on user's physical data
         uint256[] memory infer_output = new uint256[](3);
@@ -185,7 +186,7 @@ contract XiHongShiInsurance is Insurance {
         for(uint i = 0; i < dataCount; ++i){
             // uint256[] memory inputData2 = getUserData2(_userAddr,1,i);
             // category 1: user data
-            getUserData(_userAddr, 1, i);
+            getUserData(_userAddr, i);
             inferArray(modelAddress, inputs[_userAddr], infer_output);
             uint256 riskFactor = infer_output[0];
             uint256 riskIndex = 0;
@@ -209,15 +210,15 @@ contract XiHongShiInsurance is Insurance {
     
     // Access user's physical data from the DataController contract.
     // Used for AI inference
-    function getUserData(address _userAddr, uint _dataCategory, uint _index) internal{
+    function getUserData(address _userAddr, uint _index) internal{
         inputs[_userAddr] = DataController(dataControllerAddress).accessStatistic(
             _userAddr, 
-            _dataCategory, // data category, refer to data contract
             _index
         );
     }
     
     // --- purchase services --- 
+    // function implementation for this institution
     function purchaseService(uint256 _serviceIndex) public payable {
         require(
             ((availableServicesByUser[msg.sender] >> _serviceIndex) & 1) == 1,
@@ -233,13 +234,12 @@ contract XiHongShiInsurance is Insurance {
         DataController(dataControllerAddress).saveReceipt(
             msg.sender,
             block.timestamp,
-            generateReceipt(msg.sender, _serviceIndex),
-            1
+            generateReceipt(msg.sender, _serviceIndex)
         );
     }
     
     // After user has successfully purchased a service, this institution will 
-    // write a receipt to the DataController contract as record
+    // write a receipt to the DataController contract as a record
     function generateReceipt(
         address _userAddr, 
         uint256 _serviceIndex
@@ -262,7 +262,7 @@ contract XiHongShiInsurance is Insurance {
     function checkCurrentHealthCondition(address _userAddr) internal returns(bool){
         // For this demo, we are using user's data for checking user's health condition
         // in the future, it would require receipt from the hospital/other institutions
-        getUserData(_userAddr, 1, 0);
+        getUserData(_userAddr, 0);
         uint256[] memory infer_output = new uint256[](3);
         inferArray(modelAddress, inputs[_userAddr], infer_output);
         uint256 riskFactor = infer_output[0];
@@ -279,6 +279,7 @@ contract XiHongShiInsurance is Insurance {
         return false;
     }
     
+    // Function implementation for this institution
     function payment(uint256 _serviceIndex) public {
         require(checkCurrentHealthCondition(msg.sender), 
             "User health condition not valid for payment");
@@ -294,15 +295,5 @@ contract XiHongShiInsurance is Insurance {
         }
         activeServicesByUser[msg.sender] = 
             activeServicesByUser[msg.sender] ^ (1 << _serviceIndex);
-    }
-    
-    // --- debug section ---
-    
-    function debug_getUserData(address _userAddr, uint _dataCategory, uint _index) public onlyOwner {
-        inputs[_userAddr] = DataController(dataControllerAddress).accessStatistic(
-            _userAddr, 
-            _dataCategory, // data category, refer to data contract
-            _index
-        );
     }
 }

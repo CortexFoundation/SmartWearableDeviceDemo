@@ -3,7 +3,102 @@
 		"constant": false,
 		"inputs": [
 			{
-				"name": "advertisementAddr",
+				"name": "_personAddr",
+				"type": "address"
+			},
+			{
+				"name": "_dataCategory",
+				"type": "uint256"
+			},
+			{
+				"name": "_index",
+				"type": "uint256"
+			}
+		],
+		"name": "accessLog",
+		"outputs": [
+			{
+				"name": "",
+				"type": "string"
+			},
+			{
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"payable": false,
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"constant": false,
+		"inputs": [
+			{
+				"name": "_personAddr",
+				"type": "address"
+			},
+			{
+				"name": "_dataCategory",
+				"type": "uint256"
+			},
+			{
+				"name": "_index",
+				"type": "uint256"
+			}
+		],
+		"name": "accessReceipt",
+		"outputs": [
+			{
+				"name": "",
+				"type": "uint256[25]"
+			}
+		],
+		"payable": false,
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"constant": false,
+		"inputs": [
+			{
+				"name": "_newOwner",
+				"type": "address"
+			}
+		],
+		"name": "addOwnership",
+		"outputs": [],
+		"payable": false,
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"constant": false,
+		"inputs": [],
+		"name": "deleteAccount",
+		"outputs": [],
+		"payable": false,
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"constant": false,
+		"inputs": [
+			{
+				"name": "_index",
+				"type": "uint256"
+			}
+		],
+		"name": "integrateData",
+		"outputs": [],
+		"payable": false,
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"constant": false,
+		"inputs": [
+			{
+				"name": "_advertisementAddr",
 				"type": "address"
 			},
 			{
@@ -12,6 +107,42 @@
 			}
 		],
 		"name": "registerAdvertisement",
+		"outputs": [],
+		"payable": false,
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"constant": false,
+		"inputs": [
+			{
+				"name": "_hospitalAddr",
+				"type": "address"
+			},
+			{
+				"name": "_name",
+				"type": "string"
+			}
+		],
+		"name": "registerHospital",
+		"outputs": [],
+		"payable": false,
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"constant": false,
+		"inputs": [
+			{
+				"name": "_insuranceAddr",
+				"type": "address"
+			},
+			{
+				"name": "_name",
+				"type": "string"
+			}
+		],
+		"name": "registerInsurance",
 		"outputs": [],
 		"payable": false,
 		"stateMutability": "nonpayable",
@@ -37,64 +168,8 @@
 	},
 	{
 		"constant": false,
-		"inputs": [
-			{
-				"name": "_institutionId",
-				"type": "address"
-			},
-			{
-				"name": "_au",
-				"type": "uint256"
-			}
-		],
-		"name": "userAuthorization",
-		"outputs": [],
-		"payable": false,
-		"stateMutability": "nonpayable",
-		"type": "function"
-	},
-	{
-		"constant": true,
-		"inputs": [
-			{
-				"name": "_p",
-				"type": "address"
-			}
-		],
-		"name": "getPersonDataLen",
-		"outputs": [
-			{
-				"name": "",
-				"type": "uint256"
-			}
-		],
-		"payable": false,
-		"stateMutability": "view",
-		"type": "function"
-	},
-	{
-		"constant": true,
-		"inputs": [
-			{
-				"name": "_addr",
-				"type": "address"
-			}
-		],
-		"name": "isOwner",
-		"outputs": [
-			{
-				"name": "",
-				"type": "bool"
-			}
-		],
-		"payable": false,
-		"stateMutability": "view",
-		"type": "function"
-	},
-	{
-		"constant": false,
 		"inputs": [],
-		"name": "deleteAccount",
+		"name": "removeOwnership",
 		"outputs": [],
 		"payable": false,
 		"stateMutability": "nonpayable",
@@ -104,32 +179,36 @@
 		"constant": false,
 		"inputs": [
 			{
-				"name": "hospitalAddr",
+				"name": "_personAddr",
 				"type": "address"
 			},
 			{
-				"name": "_name",
-				"type": "string"
+				"name": "_timestamp",
+				"type": "uint256"
+			},
+			{
+				"name": "_receiptData",
+				"type": "uint256[25]"
 			}
 		],
-		"name": "registerHospital",
+		"name": "saveReceipt",
 		"outputs": [],
 		"payable": false,
 		"stateMutability": "nonpayable",
 		"type": "function"
 	},
 	{
-		"constant": true,
-		"inputs": [],
-		"name": "getNumberOfInstitutions",
-		"outputs": [
+		"constant": false,
+		"inputs": [
 			{
-				"name": "",
+				"name": "_tpb",
 				"type": "uint256"
 			}
 		],
+		"name": "setTimePeriodBlock",
+		"outputs": [],
 		"payable": false,
-		"stateMutability": "view",
+		"stateMutability": "nonpayable",
 		"type": "function"
 	},
 	{
@@ -158,23 +237,11 @@
 		"constant": false,
 		"inputs": [
 			{
-				"name": "_personAddr",
-				"type": "address"
-			},
-			{
-				"name": "_timestamp",
-				"type": "uint256"
-			},
-			{
-				"name": "_receiptData",
-				"type": "uint256[25]"
-			},
-			{
-				"name": "_category",
+				"name": "num",
 				"type": "uint256"
 			}
 		],
-		"name": "saveReceipt",
+		"name": "uploadTestStatistic",
 		"outputs": [],
 		"payable": false,
 		"stateMutability": "nonpayable",
@@ -184,15 +251,15 @@
 		"constant": false,
 		"inputs": [
 			{
-				"name": "insuranceAddr",
+				"name": "_institutionId",
 				"type": "address"
 			},
 			{
-				"name": "_name",
-				"type": "string"
+				"name": "_auth",
+				"type": "uint256"
 			}
 		],
-		"name": "registerInsurance",
+		"name": "userAuthorization",
 		"outputs": [],
 		"payable": false,
 		"stateMutability": "nonpayable",
@@ -202,52 +269,51 @@
 		"constant": false,
 		"inputs": [
 			{
-				"name": "_tpb",
-				"type": "uint256"
+				"name": "_institutionId",
+				"type": "address"
 			}
 		],
-		"name": "setTimePeriodBlock",
+		"name": "userDeauthorization",
 		"outputs": [],
 		"payable": false,
 		"stateMutability": "nonpayable",
 		"type": "function"
 	},
 	{
-		"constant": true,
+		"anonymous": false,
 		"inputs": [
 			{
-				"name": "_p",
+				"indexed": false,
+				"name": "_personAddr",
 				"type": "address"
-			},
-			{
-				"name": "_index",
-				"type": "uint256"
 			}
 		],
-		"name": "getStatistic",
-		"outputs": [
-			{
-				"name": "",
-				"type": "uint256[25]"
-			}
-		],
-		"payable": false,
-		"stateMutability": "view",
-		"type": "function"
+		"name": "registerPersonSuccess",
+		"type": "event"
 	},
 	{
-		"constant": true,
-		"inputs": [],
-		"name": "getpeopleNUM",
-		"outputs": [
+		"anonymous": false,
+		"inputs": [
 			{
-				"name": "",
-				"type": "uint256"
+				"indexed": false,
+				"name": "_personAddr",
+				"type": "address"
 			}
 		],
-		"payable": false,
-		"stateMutability": "view",
-		"type": "function"
+		"name": "uploadDataSuccess",
+		"type": "event"
+	},
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": false,
+				"name": "_institutionAddr",
+				"type": "address"
+			}
+		],
+		"name": "registerInstitutionSuccess",
+		"type": "event"
 	},
 	{
 		"constant": true,
@@ -255,10 +321,6 @@
 			{
 				"name": "_personAddr",
 				"type": "address"
-			},
-			{
-				"name": "_dataCategory",
-				"type": "uint256"
 			},
 			{
 				"name": "_index",
@@ -296,36 +358,65 @@
 		"type": "function"
 	},
 	{
-		"constant": false,
-		"inputs": [
+		"constant": true,
+		"inputs": [],
+		"name": "getNumberOfInstitutions",
+		"outputs": [
 			{
-				"name": "_institutionId",
-				"type": "address"
+				"name": "",
+				"type": "uint256"
 			}
 		],
-		"name": "userDeauthorization",
-		"outputs": [],
 		"payable": false,
-		"stateMutability": "nonpayable",
+		"stateMutability": "view",
 		"type": "function"
 	},
 	{
-		"constant": false,
+		"constant": true,
+		"inputs": [],
+		"name": "getpeopleNUM",
+		"outputs": [
+			{
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"payable": false,
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"constant": true,
 		"inputs": [
 			{
-				"name": "_personAddr",
+				"name": "_p",
 				"type": "address"
-			},
+			}
+		],
+		"name": "getPersonDataLen",
+		"outputs": [
 			{
-				"name": "_dataCategory",
+				"name": "",
 				"type": "uint256"
+			}
+		],
+		"payable": false,
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"constant": true,
+		"inputs": [
+			{
+				"name": "_p",
+				"type": "address"
 			},
 			{
 				"name": "_index",
 				"type": "uint256"
 			}
 		],
-		"name": "accessReceipt",
+		"name": "getStatistic",
 		"outputs": [
 			{
 				"name": "",
@@ -333,70 +424,26 @@
 			}
 		],
 		"payable": false,
-		"stateMutability": "nonpayable",
+		"stateMutability": "view",
 		"type": "function"
 	},
 	{
-		"constant": false,
+		"constant": true,
 		"inputs": [
 			{
-				"name": "_index",
-				"type": "uint256"
-			}
-		],
-		"name": "integrateData",
-		"outputs": [],
-		"payable": false,
-		"stateMutability": "nonpayable",
-		"type": "function"
-	},
-	{
-		"constant": false,
-		"inputs": [
-			{
-				"name": "num",
-				"type": "uint256"
-			}
-		],
-		"name": "uploadTestStatistic",
-		"outputs": [],
-		"payable": false,
-		"stateMutability": "nonpayable",
-		"type": "function"
-	},
-	{
-		"constant": false,
-		"inputs": [],
-		"name": "removeOwnership",
-		"outputs": [],
-		"payable": false,
-		"stateMutability": "nonpayable",
-		"type": "function"
-	},
-	{
-		"constant": false,
-		"inputs": [
-			{
-				"name": "_newOwner",
+				"name": "_addr",
 				"type": "address"
 			}
 		],
-		"name": "addOwnership",
-		"outputs": [],
-		"payable": false,
-		"stateMutability": "nonpayable",
-		"type": "function"
-	},
-	{
-		"anonymous": false,
-		"inputs": [
+		"name": "isOwner",
+		"outputs": [
 			{
-				"indexed": false,
-				"name": "_peopleAddress",
-				"type": "address"
+				"name": "",
+				"type": "bool"
 			}
 		],
-		"name": "registerSuccess",
-		"type": "event"
+		"payable": false,
+		"stateMutability": "view",
+		"type": "function"
 	}
 ]
