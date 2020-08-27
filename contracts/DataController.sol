@@ -328,6 +328,11 @@ contract DataController is Ownable {
         }
     }
 
+    //get the specefic person's statistic length
+    function getPersonDataLen(address _personAddr) public view returns(uint) {
+        return personInfo[_personAddr].statistics.length;
+    }
+
     // get the body feature statistics.
     function accessStatistic(address _personAddr,uint _index)
         public 
@@ -478,34 +483,5 @@ contract DataController is Ownable {
         }
         return tmpData;
     }
-
-// -----------------------------test function ---------------------------
-    function setTimePeriodBlock(uint _tpb) public onlyOwner {
-        PERIODBLOCK = _tpb;
-    }
     
-    function getpeopleNUM() public view returns(uint) {
-        return personAddress.length;
-    }
-    
-    function getPersonDataLen(address _p) public view returns(uint) {
-        return personInfo[_p].statistics.length;
-    }
-    
-    function getStatistic(address _p, uint _index) public view returns(uint[25] memory) {
-        Person storage p = personInfo[_p];
-        return p.statistics[_index].encodedData;
-    }
-    
-    function uploadTestStatistic(uint num) public personExistOnly(msg.sender){
-        uint _startBlk = num;
-        uint _stopBlk = num+7;
-        uint[25] memory _metaData;
-        for (uint i = 0; i < 25; i++) {
-            _metaData[i] = num;
-        }
-        Statistic memory tmpStatistic = Statistic(
-        _startBlk, _stopBlk, _metaData);
-        personInfo[msg.sender].statistics.push(tmpStatistic);
-    }
 }
