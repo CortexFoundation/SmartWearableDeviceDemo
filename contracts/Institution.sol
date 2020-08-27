@@ -2,13 +2,11 @@ pragma solidity ^0.4.24;
 
 import "./Ownable.sol";
 
-// last implemented contract: 0x70ae5b30c81d00cc4b6cbe765a71ab89e35d2cc4
 contract Institution is Ownable {
     
 // ---------------------------- Company Information ------------------------------
-
     string public companyName;
-    address public dataControllerAddress = 0xdb317E397CDcB8A9e9Cd70F06c981537b5258A69;
+    address public dataControllerAddress = 0x2ac5eb61288c47297e4c7d64249ee5310dc8dccb;
     
     // Only accessible by the contract moderator.
     // For institution moderator to change it's company name.
@@ -64,14 +62,14 @@ contract Institution is Ownable {
     function isServiceActive(uint8 _serviceIndex)
         public view returns(bool);
     
-    // all the active services that user has selected in bitmap format
+    // @return uint: all the active services that user has selected in bitmap format
     function getActiveServices()
         public view returns(uint256)
     {
         return activeServicesByUser[msg.sender];
     }
     
-    // all the available services that user can choose from in bitmap format
+    // @return uint: all the available services that user can choose from in bitmap format
     function getAvailableServices()
         public view returns(uint256)
     {
